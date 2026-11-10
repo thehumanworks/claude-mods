@@ -42,7 +42,7 @@ function spark(values: number[]): string {
 
 export function line(model: string, rate: number): string {
   const r = rate.toFixed(rate < 100 ? 1 : 0)
-  return `⚡ ${r} tok/s  ${shortModel(model)}`
+  return `${shortModel(model)}  ${r} tok/s`
 }
 
 export function report(stats: Stats): string {

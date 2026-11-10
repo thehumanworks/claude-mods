@@ -21,6 +21,11 @@ export const register: Register = on => {
   // Stats are kept per model (the id each response reports), since a
   // bigger model is naturally slower than a smaller one.
   const turns = new Map<string, Acc>()
+  let currentLine: string | undefined
+
+  on('ui.render', { component: 'SessionMode' }, ($, e, next) =>
+    next(currentLine ? { ...e, props: { modes: [...e.props.modes, currentLine] } } : e),
+  )
 
   on('session.start', async ($, e, next) => {
     await $.command.register({
@@ -39,7 +44,9 @@ export const register: Register = on => {
       const rate = s?.recent.at(-1)
       last = model && rate !== undefined ? { model, rate } : undefined
     }
-    if (last) $.ui.status(line(last.model, last.rate))
+    currentLine = last ? line(last.model, last.rate) : undefined
+    $.ui.status(undefined)
+    $.ui.invalidate('ui.render')
     return next(e)
   })
 
@@ -86,7 +93,8 @@ export const register: Register = on => {
     const stats = await load($)
     const s = record(stats.byModel[acc.model] ?? empty(), rate)
     stats.byModel[acc.model] = s
-    $.ui.status(line(acc.model, rate))
+    currentLine = line(acc.model, rate)
+    $.ui.invalidate('ui.render')
     await $.store.set(KEY, stats)
     await $.store.set(LAST, { model: acc.model, rate })
     return out
@@ -96,7 +104,9 @@ export const register: Register = on => {
     if (e.args.trim() === 'reset') {
       await $.store.delete(KEY)
       await $.store.delete(LAST)
+      currentLine = undefined
       $.ui.status(undefined)
+      $.ui.invalidate('ui.render')
       return { text: 'Token speed averages cleared.' }
     }
     const stats = await load($)

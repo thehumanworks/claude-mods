@@ -2,9 +2,9 @@ import { expect, test } from 'claude-code/testing'
 
 import { empty, line, record, report } from './speedo'
 
-test('status line shows only tok/s speed and short model name', async () => {
-  expect(line('claude-opus-5-5', 42.34)).toBe('⚡ 42.3 tok/s  opus-5-5')
-  expect(line('claude-haiku-5-5-20251001', 130.4)).toBe('⚡ 130 tok/s  haiku-5-5')
+test('status line shows only short model name and tok/s speed', async () => {
+  expect(line('claude-opus-5-5', 42.34)).toBe('opus-5-5  42.3 tok/s')
+  expect(line('claude-haiku-5-5-20251001', 130.4)).toBe('haiku-5-5  130 tok/s')
 })
 
 test('report summarizes last diff, average, best and recent trend per model', async () => {

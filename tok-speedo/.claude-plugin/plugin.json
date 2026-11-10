@@ -1,1 +1,1 @@
-{ "name": "tok-speedo", "version": "0.3.0", "description": "A tokens-per-second speedometer on the status line, with a running average and trend" }
+{ "name": "tok-speedo", "version": "0.4.0", "description": "A tokens-per-second speedometer on the status line, with a running average and trend" }

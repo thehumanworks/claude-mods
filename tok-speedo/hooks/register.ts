@@ -23,9 +23,11 @@ export const register: Register = on => {
   const turns = new Map<string, Acc>()
   let currentLine: string | undefined
 
-  on('ui.render', { component: 'SessionMode' }, ($, e, next) =>
-    next(currentLine ? { ...e, props: { modes: [...e.props.modes, currentLine] } } : e),
-  )
+  on('ui.render', { component: 'PromptHint' }, ($, e, next) => {
+    if (!currentLine) return next(e)
+    const { Text } = $.ui.resolve(e)
+    return Text({ color: 'claude', children: currentLine })
+  })
 
   on('session.start', async ($, e, next) => {
     await $.command.register({

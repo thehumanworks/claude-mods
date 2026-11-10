@@ -14,7 +14,6 @@ export type ModelStats = {
 export type Stats = { byModel: Record<string, ModelStats> }
 
 export const RECENT = 12
-const GAUGE = 13 // odd: the middle cell is the average
 const SPARK = '▁▂▃▄▅▆▇█'
 
 export const empty = (): ModelStats => ({ n: 0, mean: 0, recent: [], best: 0 })
@@ -32,16 +31,6 @@ export function record(s: ModelStats, rate: number): ModelStats {
 /** Short model label: claude-opus-5-5 -> opus-5-5. */
 export const shortModel = (m: string) => m.replace(/^claude-/, '').replace(/-\d{8}$/, '')
 
-function gauge(rate: number, mean: number): string {
-  const mid = (GAUGE - 1) / 2
-  const pos = Math.max(0, Math.min(GAUGE - 1, Math.round((rate / mean) * mid)))
-  let out = ''
-  for (let i = 0; i < GAUGE; i++) {
-    out += i === pos ? '◉' : i === mid ? '┿' : '━'
-  }
-  return `╺${out}╸`
-}
-
 function spark(values: number[]): string {
   const lo = Math.min(...values)
   const hi = Math.max(...values)
@@ -51,17 +40,23 @@ function spark(values: number[]): string {
     .join('')
 }
 
-export function line(model: string, rate: number, s: ModelStats): string {
+export function line(model: string, rate: number): string {
   const r = rate.toFixed(rate < 100 ? 1 : 0)
-  const head = `⚡ ${r} tok/s`
-  const pct = Math.round(((rate - s.mean) / s.mean) * 100)
-  const vs = pct > 0 ? `▲${pct}%` : pct < 0 ? `▼${-pct}%` : '±0%'
-  return [
-    head,
-    gauge(rate, s.mean),
-    vs,
-    `avg ${s.mean.toFixed(0)}`,
-    spark(s.recent),
-    shortModel(model),
-  ].join('  ')
+  return `⚡ ${r} tok/s  ${shortModel(model)}`
+}
+
+export function report(stats: Stats): string {
+  const entries = Object.entries(stats.byModel)
+  if (!entries.length) return 'No turns measured yet.'
+  const rows = entries.map(([m, s]) => {
+    const last = s.recent.at(-1)
+    const pct = last !== undefined && s.mean > 0 ? Math.round(((last - s.mean) / s.mean) * 100) : 0
+    const vs = pct > 0 ? `▲${pct}%` : pct < 0 ? `▼${-pct}%` : '±0%'
+    const lastStr = last !== undefined ? `${last.toFixed(1)} (${vs})` : '–'
+    const trend = s.recent.length
+      ? `${spark(s.recent)} [${s.recent.map(r => r.toFixed(0)).join(', ')}]`
+      : '–'
+    return `- ${shortModel(m)}: last ${lastStr}, avg ${s.mean.toFixed(1)} tok/s (${s.n} turns), best ${s.best.toFixed(1)}  ${trend}`
+  })
+  return `Token speed (output tokens ÷ generation time, per turn):\n${rows.join('\n')}`
 }

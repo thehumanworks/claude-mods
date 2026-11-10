@@ -1,6 +1,6 @@
 import type { EngineInterface, Register } from 'claude-code'
 
-import { empty, line, record, shortModel, type Stats } from './speedo'
+import { empty, line, record, report, type Stats } from './speedo'
 
 const KEY = 'stats-v1'
 const LAST = 'last-reading-v1'
@@ -18,7 +18,7 @@ async function load($: EngineInterface): Promise<Stats> {
 
 export const register: Register = on => {
   // Generation time and output tokens per main-loop turn, summed over its steps.
-  // Averages are kept per model (the id each response reports), since a
+  // Stats are kept per model (the id each response reports), since a
   // bigger model is naturally slower than a smaller one.
   const turns = new Map<string, Acc>()
 
@@ -30,17 +30,16 @@ export const register: Register = on => {
     })
     // Redraw from the saved reading so the line always uses the current code.
     await $.store.delete(OLD_LAST)
-    const stats = await load($)
     let last = (await $.store.get(LAST)) as { model: string; rate: number } | undefined
-    if (!last || !stats.byModel[last.model]) {
+    if (!last) {
       // No saved reading yet: fall back to the most-measured model's last turn.
+      const stats = await load($)
       const [model, s] =
         Object.entries(stats.byModel).sort((x, y) => y[1].n - x[1].n)[0] ?? []
       const rate = s?.recent.at(-1)
       last = model && rate !== undefined ? { model, rate } : undefined
     }
-    const s = last && stats.byModel[last.model]
-    if (last && s) $.ui.status(line(last.model, last.rate, s))
+    if (last) $.ui.status(line(last.model, last.rate))
     return next(e)
   })
 
@@ -87,8 +86,7 @@ export const register: Register = on => {
     const stats = await load($)
     const s = record(stats.byModel[acc.model] ?? empty(), rate)
     stats.byModel[acc.model] = s
-    const text = line(acc.model, rate, s)
-    $.ui.status(text)
+    $.ui.status(line(acc.model, rate))
     await $.store.set(KEY, stats)
     await $.store.set(LAST, { model: acc.model, rate })
     return out
@@ -102,14 +100,6 @@ export const register: Register = on => {
       return { text: 'Token speed averages cleared.' }
     }
     const stats = await load($)
-    const rows = Object.entries(stats.byModel).map(
-      ([m, s]) =>
-        `- ${shortModel(m)}: avg ${s.mean.toFixed(1)} tok/s over ${s.n} turns, best ${s.best.toFixed(1)}, last ${s.recent.at(-1)?.toFixed(1) ?? '–'}`,
-    )
-    return {
-      text: rows.length
-        ? `Token speed (output tokens ÷ generation time, per turn):\n${rows.join('\n')}`
-        : 'No turns measured yet.',
-    }
+    return { text: report(stats) }
   })
 }

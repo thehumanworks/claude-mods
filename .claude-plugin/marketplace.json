@@ -1,0 +1,11 @@
+{
+  "name": "claude-mods",
+  "owner": { "name": "thehumanworks" },
+  "plugins": [
+    {
+      "name": "tok-speedo",
+      "source": "./tok-speedo",
+      "description": "A tokens-per-second speedometer on the status line, with a running average and trend"
+    }
+  ]
+}

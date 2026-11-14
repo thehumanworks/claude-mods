@@ -1,6 +1,6 @@
 {
   "name": "async-compaction",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Asynchronous (background) compaction: a cheap model summarizes the conversation ahead of time, and at the compaction limit the summary is swapped in with the latest messages kept raw",
   "author": { "name": "Tomas Roda" },
   "userConfig": {

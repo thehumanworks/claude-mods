@@ -65,8 +65,8 @@ type Runtime = {
   isCompacting: boolean
   /** Compactions that replaced the conversation: a summary one of them overtook is not kept. */
   compacted: number
-  /** Claude Code's auto-compact limit, as last read; with auto-compact off, its window. */
-  limit?: { model: string; tokens: number; isAuto: boolean; at: number }
+  /** Claude Code's auto-compact limit as last read (with auto-compact off, its window): kept only to log a change. */
+  limit?: { model: string; tokens: number; isAuto: boolean; window: number }
 }
 
 /** Sessions whose ready summary is kept, and whose archive index is. */
@@ -76,8 +76,6 @@ const KEEP_ARCHIVES = 200
 const WAIT_FOR_SUMMARY_MS = 8_000
 /** A background summary waits until there is at least this much to summarize. */
 const MIN_SUMMARIZED_TOKENS = 1_000
-/** How often the auto-compact limit is read again. */
-const LIMIT_TTL_MS = 5 * 60_000
 /** Inside a turn the context is measured at a tool call at most this often. */
 const CHECK_EVERY_MS = 10_000
 /** Summaries in a row that may go unfinished (cut off with their process, or failed) before compaction writes the next itself. */
@@ -329,22 +327,24 @@ async function writeInBackground(
  * cannot start a compaction that its own hook answers, so the swap always
  * waits for Claude Code's.)
  */
-async function thresholds($: $, rt: Runtime, config: Config): Promise<{ limit: number; trigger: number; isAuto: boolean }> {
-  const [model, now] = await Promise.all([$.session.model(), $.clock.now()])
-  if (rt.limit === undefined || rt.limit.model !== model || now - rt.limit.at > LIMIT_TTL_MS) {
-    const { window, breakdown } = (await $.session.usage({ breakdown: 'summary' })).context
-    let tokens = breakdown?.autoCompactThreshold ?? breakdown?.rawMaxTokens ?? window
-    // The documented override moves Claude Code's threshold without changing what it reports: it is a share of
-    // the window less the room kept for the reply, which is the reported threshold plus the engine's own buffer.
-    const percent = Number(await $.env.get('CLAUDE_AUTOCOMPACT_PCT_OVERRIDE'))
-    if (breakdown?.autoCompactThreshold !== undefined && percent > 0 && percent <= 100) {
-      tokens = Math.min(tokens, Math.floor(((breakdown.autoCompactThreshold + AUTOCOMPACT_BUFFER) * percent) / 100))
-    }
-    rt.limit = { model, tokens, isAuto: breakdown?.isAutoCompactEnabled !== false, at: now }
-    debug($, `auto-compact limit for ${model}: ${tokens} tokens`)
+async function thresholds($: $, rt: Runtime, config: Config): Promise<{ limit: number; trigger: number; isAuto: boolean; window: number }> {
+  // Read at every use, not cached: `/autocompact` moves the window of the same model mid-session, and the
+  // engine's `summary` breakdown is an estimate it makes without an API call.
+  const [model, { context }] = await Promise.all([$.session.model(), $.session.usage({ breakdown: 'summary' })])
+  const { breakdown } = context
+  let tokens = breakdown?.autoCompactThreshold ?? breakdown?.rawMaxTokens ?? context.window
+  // The documented override moves Claude Code's threshold without changing what it reports: it is a share of
+  // the window less the room kept for the reply, which is the reported threshold plus the engine's own buffer.
+  const percent = Number(await $.env.get('CLAUDE_AUTOCOMPACT_PCT_OVERRIDE'))
+  if (breakdown?.autoCompactThreshold !== undefined && percent > 0 && percent <= 100) {
+    tokens = Math.min(tokens, Math.floor(((breakdown.autoCompactThreshold + AUTOCOMPACT_BUFFER) * percent) / 100))
   }
-  const limit = rt.limit.tokens
-  return { limit, trigger: Math.round((limit * config.triggerAt) / 100), isAuto: rt.limit.isAuto }
+  const limit = { model, tokens, isAuto: breakdown?.isAutoCompactEnabled !== false, window: breakdown?.rawMaxTokens ?? context.window }
+  if (rt.limit?.model !== model || rt.limit.tokens !== tokens || rt.limit.window !== limit.window) {
+    debug($, `auto-compact limit for ${model}: ${tokens} tokens, in a window of ${limit.window}`)
+  }
+  rt.limit = limit
+  return { limit: tokens, trigger: Math.round((tokens * config.triggerAt) / 100), isAuto: limit.isAuto, window: limit.window }
 }
 
 /**
@@ -576,7 +576,7 @@ async function report($: $, rt: Runtime): Promise<string> {
   if (!config.enabled) return 'Off (the enabled setting): Claude Code compacts as it always does.'
   const sessionId = await $.session.id()
   const tokens = (await $.session.usage()).context.tokens
-  const { limit, trigger, isAuto } = await thresholds($, rt, config)
+  const { limit, trigger, isAuto, window } = await thresholds($, rt, config)
   const prepared = await readPrepared($, sessionId)
   const index = await readIndex($, sessionId)
   const now = await $.clock.now()
@@ -586,7 +586,7 @@ async function report($: $, rt: Runtime): Promise<string> {
       `${level.keepPercent > 0 ? `, ${level.keepPercent}% more of the limit kept raw` : ''}) · ` +
       `${instructions.trim() ? 'custom prompt' : 'built-in prompt'} · recall ${config.recall ? 'on' : 'off'}`,
     `Context: ${tokens === undefined ? 'not measured yet' : `${n(tokens)} tokens`}. ` +
-      (isAuto ? `Claude Code compacts at ${n(limit)}` : `Auto-compact is off; the window is ${n(limit)}`) +
+      (isAuto ? `Auto-compact window ${n(window)} · Claude Code compacts at ${n(limit)}` : `Auto-compact is off; the window is ${n(limit)}`) +
       `; the summary starts at ${n(trigger)} (${config.triggerAt}%).`,
   ]
   if (rt.running?.sessionId === sessionId) {

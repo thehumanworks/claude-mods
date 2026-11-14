@@ -538,7 +538,7 @@ test('the session offers the recall tool and the /async-compaction command', asy
   const run = async () => ((await $.command.run({ command: 'async-compaction', args: '' } as never)) as { text: string }).text
   let text = await run()
   expect(text).toContain('Model haiku · level balanced (summary of at most 1,200 words)')
-  expect(text).toContain('Context: 60,000 tokens. Claude Code compacts at 160,000; the summary starts at 120,000 (75%).')
+  expect(text).toContain('Context: 60,000 tokens. Auto-compact window 180,000 · Claude Code compacts at 160,000; the summary starts at 120,000 (75%).')
   expect(text).toContain('Summary: not started')
 
   world.tokens = 121_000
@@ -551,6 +551,24 @@ test('the session offers the recall tool and the /async-compaction command', asy
   // Rewound and gone another way.
   world.messages = conversation(121, 500)
   expect(await run()).toContain('The conversation has changed under it')
+})
+
+test('a window changed mid-session on the same model moves the status line and the trigger at once', async ($, on) => {
+  // As `/autocompact` does: the model stays, and Claude Code reports the new window and threshold on the next read.
+  const world: { tokens: number; messages: SessionMessage[]; limit?: number; compactWindow?: number } = { tokens: 100_000, messages: conversation(100) }
+  const { seen, clock } = engine(on, world)
+  const run = async () => ((await $.command.run({ command: 'async-compaction', args: '' } as never)) as { text: string }).text
+  expect(await run()).toContain('Auto-compact window 180,000 · Claude Code compacts at 160,000; the summary starts at 120,000 (75%).')
+  await endTurn($, clock)
+  expect(seen.completions.length).toBe(0)
+
+  world.limit = 120_000
+  world.compactWindow = 153_000
+  await clock.advance(1_000)
+  expect(await run()).toContain('Auto-compact window 153,000 · Claude Code compacts at 120,000; the summary starts at 90,000 (75%).')
+  // 100k is past the new trigger (90k) though under the old one (120k).
+  await endTurn($, clock)
+  expect(seen.completions.length).toBe(1)
 })
 
 test('turned off, Claude Code compacts as it always does', { options: { enabled: false } }, async ($, on) => {

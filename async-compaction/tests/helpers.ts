@@ -45,6 +45,8 @@ export type World = {
   messages: SessionMessage[]
   /** Claude Code's auto-compact limit as it reports it. Default 160k: the default trigger (75%) is then 120k. */
   limit?: number
+  /** The auto-compact window Claude Code measures against (`rawMaxTokens`). Default 180k. */
+  compactWindow?: number
   env?: Record<string, string>
   /** What an earlier process left in the plugin's store. */
   store?: Record<string, unknown>
@@ -99,7 +101,7 @@ export function engine(on: On, world: World) {
         tokens: world.tokens,
         window: 200_000,
         ...(e.breakdown && {
-          breakdown: { autoCompactThreshold: world.limit ?? 160_000, rawMaxTokens: 180_000, autocompactSource: 'model-default', isAutoCompactEnabled: true },
+          breakdown: { autoCompactThreshold: world.limit ?? 160_000, rawMaxTokens: world.compactWindow ?? 180_000, autocompactSource: 'model-default', isAutoCompactEnabled: true },
         }),
       },
     } as never,

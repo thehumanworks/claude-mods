@@ -20,6 +20,8 @@ Answer `y` to add the marketplace, then pick a scope. From a checkout, for one s
 
 `/async-compaction` shows the settings in force, where the trigger and the limit are for this session, whether a summary is ready, and how much can be recalled.
 
+The limit is not the auto-compact window. The window is what `/autocompact` or `autoCompactWindow` sets (per model under `modelSettings`, or globally), and Claude Code compacts some way below it, keeping room for the reply and a buffer. With a 300,000-token window the status reads `Auto-compact window 300,000 · Claude Code compacts at 267,000`, and the summary starts at 75% of the 267,000. Both numbers are read from Claude Code each time they are used, so a `/autocompact` change applies at once, in the same session.
+
 ## Settings
 
 Set on the screen the install shows, and afterwards in `/config`.

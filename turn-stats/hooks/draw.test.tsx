@@ -56,7 +56,7 @@ test('the stats line is drawn under the turn last message, on every surface', as
   // The answer itself is left alone: no note with the mod's name.
   expect(out.text).toBe('Done.')
 
-  for (const surface of ['terminal', 'desktop'] as const) {
+  for (const surface of ['terminal', 'desktop', 'mobile'] as const) {
     const last = await $.ui.mount({ ...message('row-2'), surface })
     expect((await last.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
     expect((await last.find({ type: 'Text', text: /^TPS/ }))?.text).toBe(

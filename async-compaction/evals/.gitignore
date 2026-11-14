@@ -1,0 +1,3 @@
+.cache/
+# The recall eval's sessions: ids and working folders of this machine, of no use on another.
+results/recall-sessions.json

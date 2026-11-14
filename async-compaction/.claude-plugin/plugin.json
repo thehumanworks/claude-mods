@@ -1,0 +1,52 @@
+{
+  "name": "async-compaction",
+  "version": "0.1.0",
+  "description": "Asynchronous (background) compaction: a cheap model summarizes the conversation ahead of time, and at the compaction limit the summary is swapped in with the latest messages kept raw",
+  "author": { "name": "Tomas Roda" },
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Async compaction",
+      "description": "Off: Claude Code compacts as it always does.",
+      "default": true
+    },
+    "model": {
+      "type": "string",
+      "title": "Compaction model",
+      "description": "Model that writes the summary: an alias (haiku, sonnet, opus) or a full model id.",
+      "default": "haiku"
+    },
+    "triggerAt": {
+      "type": "number",
+      "title": "Background trigger (%)",
+      "description": "The summary starts in the background once the context reaches this percentage of Claude Code's auto-compact limit. Must be below 100: 10 to 95.",
+      "default": 75,
+      "min": 10,
+      "max": 95
+    },
+    "level": {
+      "type": "string",
+      "title": "Compaction level",
+      "description": "aggressive: a shorter summary. balanced: the default. soft: a longer summary, and more of the conversation before the trigger kept raw.",
+      "options": ["aggressive", "balanced", "soft"],
+      "default": "balanced"
+    },
+    "prompt": {
+      "type": "string",
+      "title": "Compaction prompt",
+      "description": "Replaces the built-in instructions the compaction model follows (what to keep and how to lay it out). The level's length limit and the citation rules are added after it. Empty: the built-in prompt.",
+      "default": ""
+    },
+    "promptFile": {
+      "type": "file",
+      "title": "Compaction prompt file",
+      "description": "A file whose text is the compaction prompt; wins over Compaction prompt. hooks/prompts.ts holds the built-in one to start from."
+    },
+    "recall": {
+      "type": "boolean",
+      "title": "Recall tool",
+      "description": "Keep the summarized messages on disk, have the summary cite them as [m412], and give Claude a recall tool that reads them back word for word when the summary is not enough.",
+      "default": true
+    }
+  }
+}

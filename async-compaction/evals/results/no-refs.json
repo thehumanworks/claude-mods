@@ -1,0 +1,2472 @@
+[
+ {
+  "variant": "default",
+  "fixture": "long-dev",
+  "level": "balanced",
+  "refs": false,
+  "rep": 0,
+  "words": 1072,
+  "maxWords": 1200,
+  "parts": 1,
+  "rejected": 0,
+  "outputTokens": 3291,
+  "inputTokens": 137670,
+  "seconds": 19.3,
+  "isOverTokens": false,
+  "renderedChars": 299471,
+  "summaryChars": 10192,
+  "cites": 0,
+  "unsupportedTotal": 69,
+  "unsupported": [
+   "consumer.maxPollRecords: 50",
+   "for key in OPTIONAL_KEYS: cfg.setdefault(key, None)",
+   "cd services/search && pytest -q",
+   "services/search/config.toml",
+   "services/search/src/config.py"
+  ],
+  "probes": [
+   {
+    "id": "incident/goal",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "Consumer lag on topic ingest.events.v3 keeps growing since the 14:05 UTC deploy",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/no-brokers",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Do not restart brokers; it needs a second approver",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/approval",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "I must show the commands to the user for approval first",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/no-rollback",
+    "kind": "rejected",
+    "grade": "right",
+    "answer": "8.14.0 carries the TLS CVE fix",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/versions",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Deployed 8.14.0; previous 8.13.2",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/first-fix",
+    "kind": "error",
+    "grade": "right",
+    "answer": "deployment.yaml hard-codes KESTREL_MAX_POLL_RECORDS=\"50\", which overrides the ConfigMap's 500",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/real-fix",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "kubectl set env KESTREL_MAX_POLL_RECORDS=500 on deployment/kestrel-consumer",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/page",
+    "kind": "value",
+    "grade": "right",
+    "answer": "2 million events; page the data platform lead",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/peak",
+    "kind": "value",
+    "grade": "right",
+    "answer": "1,304,117",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/durability",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "The kubectl env is overwritten by Helm on next upgrade; durable fix is patching the template to use .Values.consumer.maxPollRecords",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/branch",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "fix/consumer-poll-records-env",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/handle",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "@rosalind-ek",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/channel",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "#inc-4417",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/todo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "Set consumer.maxPollRecords default to 500 (currently 50) and add a comment pointing at #inc-4417",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/commit",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "Commit 3f9a2c1 \"tune poll for memory\"",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/revision",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Revision 57",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/pods",
+    "kind": "value",
+    "grade": "right",
+    "answer": "12",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/drain-rate",
+    "kind": "value",
+    "grade": "right",
+    "answer": "About 120k events per minute",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/helm-flags",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "--atomic and a 5-minute timeout",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/early-lag",
+    "kind": "value",
+    "grade": "right",
+    "answer": "310k at 14:20; 780k at 14:50",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/lead-name",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/postmortem-date",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/dashboard",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "test_settle_batch_idempotent",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/cause",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "find_by_idempotency_key ran outside the insert transaction in settle_batch, so concurrent workers both inserted",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/assertion",
+    "kind": "error",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/legacy",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "payments/legacy/",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/mock",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Never mock the database in tests; always run against the real Postgres container",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/rejected",
+    "kind": "rejected",
+    "grade": "right",
+    "answer": "In-process threading.Lock; rejected because several worker processes run in production",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/migration",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "0042_ledger_idempotency_unique.sql",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/concurrently",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "CREATE UNIQUE INDEX CONCURRENTLY, because the table has about 80 million rows and cannot be locked",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/backoff",
+    "kind": "superseded",
+    "grade": "right",
+    "answer": "500ms",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/unrelated",
+    "kind": "state",
+    "grade": "right",
+    "answer": "test_refunds.py::test_refund_rounding, tracked in PAY-2291",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/todo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "Add a CHANGELOG.md entry under Unreleased and open the PR against release/2026.11",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/branch",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "release/2026.11",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/ci-flag",
+    "kind": "value",
+    "grade": "right",
+    "answer": "CI uses -n 4 (pytest-xdist parallel workers)",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/commit-style",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Imperative mood, no ticket prefix",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/index-name",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "ledger_entries_idempotency_key_uq",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/verified",
+    "kind": "value",
+    "grade": "right",
+    "answer": "50 parallel runs, 0 failed",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/suite",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/backoff-test",
+    "kind": "value",
+    "grade": "right",
+    "answer": "It asserts the value is >= 200",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/reviewer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/deadline",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/pr-number",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/goal",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "Migrate all services under services/ from config.yaml to config.toml, loading with tomllib, running each service's tests, and deleting the YAML only when they pass",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/no-ask",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Do not stop to ask between services; keep going until all are done",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/values",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Do not change any values; keep the comments",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/delete-rule",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Only once that service's tests pass",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/blocked",
+    "kind": "state",
+    "grade": "right",
+    "answer": "pricing; its loader subclasses the vendored YAML-only vendor_cfg.SharedLoader, owned by the platform team",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/notests",
+    "kind": "state",
+    "grade": "right",
+    "answer": "inventory; it has no tests, so its config.yaml was kept",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-bug",
+    "kind": "error",
+    "grade": "right",
+    "answer": "A cutoff value failed because the quoted YAML string became a TOML date; fixed by quoting it in the TOML",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-bug",
+    "kind": "error",
+    "grade": "right",
+    "answer": "test_optional_issuer failed with KeyError 'issuer_override', because YAML null has no TOML equivalent",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-fix",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "The loader sets defaults with cfg.setdefault(key, None) for each OPTIONAL_KEYS entry",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/current",
+    "kind": "state",
+    "grade": "right",
+    "answer": "search",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/anchor",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Its YAML uses an &default_analyzer anchor shared by two indexes; the analyzer block will be written out inline under each index with a comment",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/remaining",
+    "kind": "state",
+    "grade": "right",
+    "answer": "shipping, webhooks",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/done-list",
+    "kind": "state",
+    "grade": "right",
+    "answer": "billing, catalog, exports, gateway, identity, notifications, reporting",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/final-report",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Inventory (no tests, YAML kept), pricing (skipped), and any service without tests",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/loader",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "tomllib",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/vendored",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "services/pricing/VENDORED.md; changes go through #platform-config",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-test",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "test_optional_issuer",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/total",
+    "kind": "value",
+    "grade": "right",
+    "answer": "12",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/ticket",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/toml-writer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/owner",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   }
+  ],
+  "summary": "Standing instructions (apply across tasks)\n- Commands that change the cluster: show them to the user for approval before running them. Do not restart brokers (needs a second approver).\n- Never mock the database in tests; tests run against the real Postgres container.\n- Do not touch anything under payments/legacy/.\n- Commit messages: imperative mood, no ticket prefix.\n- Paging: page the data platform lead if Kestrel lag passes 2 million events.\n\nTask 1: Kestrel ingest consumer lag (cluster kestrel-prod-eu2, namespace ingest, topic ingest.events.v3, group ingest-main)\n- Task: user is on-call; find why lag grows since the 14:05 UTC deploy, bring it down without losing events.\n- Done:\n  - Deploy shipped consumer 8.14.0 (previous 8.13.2). Commit 3f9a2c1 \"tune poll for memory\" changed max.poll.records 500 -> 50 in deploy/consumer/values.yaml.\n  - Lag: 310k at 14:20, 780k at 14:50, 1,012,480 after restart, 1,148,902 four minutes later.\n  - Helm override of consumer.maxPollRecords=500 (helm upgrade, revision 57, --atomic --timeout 5m) did not take effect. Cause: deploy/consumer/templates/deployment.yaml hard-codes env KESTREL_MAX_POLL_RECORDS=\"50\"; the env var overrides the ConfigMap's max.poll.records \"500\".\n  - Applied with user approval: `kubectl -n ingest set env deployment/kestrel-consumer KESTREL_MAX_POLL_RECORDS=500` (rollout succeeded, 12 replicas).\n  - Lag then drained: 1,304,117 peak, 1,071,560, 822,945 (~120k/min). Peak stayed under 2M; no page needed.\n  - Chart fix in progress: branch fix/consumer-poll-records-env created; deployment.yaml edited to `value: {{ .Values.consumer.maxPollRecords | quote }}`. deploy/consumer/values.yaml still has `consumer.maxPollRecords: 50`.\n- Decided:\n  - Patch the template (durable fix) rather than rely on the kubectl env override, which Helm overwrites on the next upgrade.\n  - Rejected full rollback: 8.14.0 carries the TLS CVE fix.\n- Open:\n  - Set default consumer.maxPollRecords to 500 in deploy/consumer/values.yaml and add a comment pointing at #inc-4417.\n  - Commit on fix/consumer-poll-records-env and open a draft PR tagging @rosalind-ek. User said incident channel is #inc-4417 (for postmortem).\n  - Note: the runbook's legacy line \"page SRE secondary at 5 million\" is outdated; the user's 2M threshold applies.\n\nTask 2: payments settlement flake (repo with payments/, CI in .ci/pipeline.yml)\n- Task: test_settle_batch_idempotent (payments/tests/test_settlement.py) fails ~1 in 5 on CI, never locally.\n- Done:\n  - Cause: CI runs `pytest -n 4 --dist loadfile payments/`; locally serial. Race in payments/core/settlement.py settle_batch: find_by_idempotency_key checked outside the transaction that inserts, so concurrent calls both insert. Reproduces with -n 4 (1 failed, 11 passed), passed 20/20 serial.\n  - Fix applied: settle_batch now does insert_entry(conn, batch_id, idempotency_key, on_conflict=\"nothing\") inside `with tx() as conn:`, falling back to find_by_idempotency_key(idempotency_key, conn=conn) when entry is None.\n  - Created payments/migrations/0042_ledger_idempotency_unique.sql containing `CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS ledger_entries_idempotency_key_uq ON ledger_entries (idempotency_key);` with a comment that it runs with no transaction.\n  - Verified: 50/50 runs of `pytest -n 4 payments/tests/test_settlement.py` passed.\n  - Full suite `pytest -n 4 payments/`: 1 failure, test_refunds.py::test_refund_rounding (Decimal 10.005 != 10.01), unrelated.\n  - RETRY_BACKOFF_MS in settlement.py changed 200 -> 350 -> 500 (latest, per user, after dashboard check). Only test referencing it asserts >= 200 (test_settlement.py:88), still passes.\n  - git status: M payments/core/settlement.py (6 insertions, 5 deletions), ?? payments/migrations/0042_ledger_idempotency_unique.sql.\n- Decided:\n  - Option (b) unique constraint + ON CONFLICT DO NOTHING, chosen over an in-process threading.Lock (rejected: multiple worker processes in production).\n  - Migration named 0042_ledger_idempotency_unique.sql; index built CONCURRENTLY (table ~80M rows).\n  - User said leave test_refund_rounding alone (tracked in PAY-2291).\n- Open:\n  - Add a CHANGELOG.md entry under \"## Unreleased\" (existing entry: \"- Add tenant currency to settlement exports.\").\n  - Open the PR targeting branch release/2026.11 (not main), with commit message in imperative mood, no ticket prefix. Branch name for this repo's PR not yet decided; the chart PR branch is fix/consumer-poll-records-env (different repo/task).\n  - Consider whether the 350/500 backoff value needs the CHANGELOG entry mention (not stated).\n\nTask 3: migrate services/ from config.yaml to config.toml (repo with services/)\n- Task: for each of 12 services, convert config.yaml -> config.toml, change src/config.py loader to tomllib (load with \"rb\", default path config.toml), run that service's tests, delete the YAML only if tests pass. Change no values, keep comments. Don't stop to ask between services. Services without tests: convert, keep YAML, list at end.\n- Services: billing, catalog, exports, gateway, identity, inventory, notifications, pricing, reporting, search, shipping, webhooks.\n- Done:\n  - billing: converted, loader updated, 33 passed, YAML git rm'd.\n  - catalog: converted, loader updated, 50 passed, YAML git rm'd.\n  - exports: converted; test failed on cutoff (YAML `cutoff: \"2026-01-31\"` was quoted string; bare TOML became date). Fixed by quoting in TOML. Then 23 passed, YAML git rm'd.\n  - identity: converted; failed test_optional_issuer KeyError 'issuer_override' (YAML had `issuer_override: null`, TOML has no null). Fixed in loader: after load, `for key in OPTIONAL_KEYS: cfg.setdefault(key, None)`. Then 68 passed, YAML git rm'd.\n  - gateway: converted, loader updated, 49 passed, YAML git rm'd.\n  - notifications: converted, loader updated, 40 passed, YAML git rm'd.\n  - reporting: converted, loader updated, 22 passed, YAML git rm'd.\n  - inventory: converted, loader updated; has no tests (`ls services/inventory/tests` empty, pytest \"no tests ran\"). Keep services/inventory/config.yaml; list at end.\n  - pricing: NOT migrated. src/config.py subclasses vendor_cfg.SharedLoader (YAML-only, pinned, owned by platform team, see services/pricing/VENDORED.md; changes go via #platform-config). Skipped; report at end.\n  - exports, gateway, identity, notifications, reporting, billing, catalog: YAML removed via git rm (confirmed in git status).\n  - search: in progress. Its YAML uses anchor `&default_analyzer` shared by products and articles indexes (tokenizer icu, filters [lowercase, asciifolding]), plus a comment \"# index settings: anchors are used to share the analyzer block\". Plan: write analyzer block out under each index in the TOML with an explanatory comment; values identical. Not yet written, no tests run yet.\n  - shipping, webhooks: not yet looked at.\n- Decided:\n  - Keep values identical; quote strings that were quoted in YAML.\n  - Pricing skipped (vendored YAML-only loader).\n  - search: inline analyzer per index instead of anchor.\n- Open:\n  - search: write config.toml, update src/config.py loader, run tests, delete YAML if pass.\n  - shipping, webhooks: convert, loader, tests, delete YAML if pass (not yet started).\n  - Final report: list inventory (no tests, YAML kept), pricing (skipped, vendored loader), any service without tests.\n  - Note: services/reporting/Dockerfile/README references — the Dockerfile for gateway was checked; verify Dockerfiles copy config.toml (not confirmed for all services).\n\nCurrent state\n- Working on Task 3, service search. The YAML content was read; I announced the plan to inline the analyzer block for products and articles and add a comment, but have not yet written services/search/config.toml.\n- Next step: write services/search/config.toml, update services/search/src/config.py to tomllib, run `cd services/search && pytest -q`, then `git rm` services/search/config.yaml if tests pass. Then shipping and webhooks, then final report.\n\n## The user's own words in this part of the conversation\n\n- Approved, but add --atomic so it rolls back by itself if the pods do not come up, and set the timeout to 5 minutes.\n- Do (b) now, approved. Lag is at 1.2M and I have to page at 2M, so move. Open the chart fix as a draft PR afterwards and tag me, my handle is @rosalind-ek. Also note for the postmortem: the incident channel is #inc-4417.\n- Great. While it drains, prepare the chart PR. Branch name fix/consumer-poll-records-env. Keep the default at 500 in values.yaml and add a comment pointing at #inc-4417.\n- Next task, in a different repository. The test `test_settle_batch_idempotent` in payments/tests/test_settlement.py fails about one run in five on CI but never on my machine. Find out why and fix it. Two rules for this repo: do not touch anything under payments/legacy/, and never mock the database in tests here, we always run against the real Postgres container.\n- Not (a): we run several worker processes in production, so an in-process lock would not protect anything. Go with (b). The migration must be number 0042, call it 0042_ledger_idempotency_unique.sql. And build the index with CREATE UNIQUE INDEX CONCURRENTLY, the table has about 80 million rows and we cannot lock it.\n- No, leave it. That one is known and tracked in PAY-2291. While you are in settlement.py, raise the retry backoff in settle_batch from 200ms to 350ms.\n- Actually make it 500ms, I just checked the dashboard and 350 is still too tight for the settlement provider.\n- Good. Two more things before you open the PR: add an entry to CHANGELOG.md under \"Unreleased\", and target the branch release/2026.11, not main. Commit messages here are imperative mood with no ticket prefix.\n- Next task, in a different repository. Migrate every service under services/ from config.yaml to config.toml. For each service: convert the file, update the loader in src/config.py to read TOML with tomllib, run that service's tests, and delete the old YAML only once tests pass. Keep going until all of them are done, do not stop to ask me between services. If a service has no tests, convert it but keep the YAML and list it at the end. Do not change any value while converting, and keep the comments."
+ },
+ {
+  "variant": "default",
+  "fixture": "long-dev",
+  "level": "balanced",
+  "refs": false,
+  "rep": 1,
+  "words": 1211,
+  "maxWords": 1200,
+  "parts": 1,
+  "rejected": 0,
+  "outputTokens": 3826,
+  "inputTokens": 137670,
+  "seconds": 21.6,
+  "isOverTokens": false,
+  "renderedChars": 299471,
+  "summaryChars": 11390,
+  "cites": 0,
+  "unsupportedTotal": 86,
+  "unsupported": [
+   "→ revision 57. Did not fix it: pods still had env",
+   ". Note:",
+   "already accepts",
+   ". Not verified whether",
+   "accepts",
+   "for key in OPTIONAL_KEYS: cfg.setdefault(key, None)",
+   "cd services/search && pytest -q",
+   "services/search/config.toml",
+   "services/search/src/config.py"
+  ],
+  "probes": [
+   {
+    "id": "incident/goal",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "Consumer lag on ingest.events.v3 (group ingest-main) grew after the 8.14.0 deploy",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/no-brokers",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "No broker restarts; they need a second approver",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/approval",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Show the command to the user before running it",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/no-rollback",
+    "kind": "rejected",
+    "grade": "right",
+    "answer": "8.14.0 carries the TLS CVE fix",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/versions",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Deployed 8.14.0; previous was 8.13.2",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/first-fix",
+    "kind": "error",
+    "grade": "right",
+    "answer": "The deployment template hard-codes KESTREL_MAX_POLL_RECORDS=50, overriding the ConfigMap value",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/real-fix",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "kubectl set env KESTREL_MAX_POLL_RECORDS=500 on the deployment",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/page",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Page the data platform lead at 2M events of lag",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/peak",
+    "kind": "value",
+    "grade": "right",
+    "answer": "1,304,117",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/durability",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "kubectl env patch is overwritten by Helm; durable fix is the chart template using .Values.consumer.maxPollRecords",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/branch",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "fix/consumer-poll-records-env",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/handle",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "@rosalind-ek",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/channel",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "#inc-4417",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/todo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "Set default consumer.maxPollRecords to 500 (currently 50) and add a comment pointing to #inc-4417",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/commit",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "3f9a2c1",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/revision",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Revision 57",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/pods",
+    "kind": "value",
+    "grade": "right",
+    "answer": "12",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/drain-rate",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Roughly 120k events per minute",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/helm-flags",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "--atomic, with a 5-minute timeout",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/early-lag",
+    "kind": "value",
+    "grade": "right",
+    "answer": "310,000 at 14:20; 780,000 at 14:50",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/lead-name",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/postmortem-date",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/dashboard",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "test_settle_batch_idempotent",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/cause",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "settle_batch checks for the idempotency key outside the transaction, then inserts: a check-then-insert race under concurrent workers",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/assertion",
+    "kind": "error",
+    "grade": "right",
+    "answer": "Expected 1 ledger row, found 2",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/legacy",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "payments/legacy/",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/mock",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Never mock the database; always run tests against the real Postgres container",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/rejected",
+    "kind": "rejected",
+    "grade": "right",
+    "answer": "An in-process lock; production runs several worker processes, so a lock would protect nothing",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/migration",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "0042_ledger_idempotency_unique.sql",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/concurrently",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "CREATE UNIQUE INDEX CONCURRENTLY, because the ~80M-row table cannot be locked",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/backoff",
+    "kind": "superseded",
+    "grade": "right",
+    "answer": "500ms",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/unrelated",
+    "kind": "state",
+    "grade": "right",
+    "answer": "test_refunds.py::test_refund_rounding, tracked as PAY-2291",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/todo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "Add CHANGELOG.md entry under Unreleased, commit, open the PR against release/2026.11, and verify migration 0042 applies in CI",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/branch",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "release/2026.11",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/ci-flag",
+    "kind": "value",
+    "grade": "wrong",
+    "answer": "CI adds --dist loadfile",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/commit-style",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Imperative mood, no ticket prefix",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/index-name",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "ledger_entries_idempotency_key_uq",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/verified",
+    "kind": "value",
+    "grade": "right",
+    "answer": "50 parallel runs, 0 failed",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/suite",
+    "kind": "value",
+    "grade": "right",
+    "answer": "318",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/backoff-test",
+    "kind": "value",
+    "grade": "right",
+    "answer": "It asserts the value is >= 200",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/reviewer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/deadline",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/pr-number",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/goal",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "Migrate each service under services/ from config.yaml to config.toml: convert, switch the loader to tomllib, run tests, delete the YAML only if tests pass",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/no-ask",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Do not stop to ask between services",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/values",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Do not change any value; keep the comments",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/delete-rule",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Only once that service's tests pass",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/blocked",
+    "kind": "state",
+    "grade": "right",
+    "answer": "pricing; its loader subclasses the vendored vendor_cfg.SharedLoader (YAML format) owned by platform, and VENDORED.md says not to replace it",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/notests",
+    "kind": "state",
+    "grade": "right",
+    "answer": "inventory; its YAML was kept and it is listed at the end",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-bug",
+    "kind": "error",
+    "grade": "right",
+    "answer": "An unquoted TOML date failed test_cutoff_is_string; fixed by quoting cutoff = \"2026-01-31\"",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-bug",
+    "kind": "error",
+    "grade": "right",
+    "answer": "test_sso.py::test_optional_issuer failed with KeyError 'issuer_override', because TOML has no null",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-fix",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Added a loop in src/config.py that sets default None for OPTIONAL_KEYS",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/current",
+    "kind": "state",
+    "grade": "right",
+    "answer": "search",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/anchor",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "It uses a YAML anchor (&default_analyzer) shared by the products and articles indexes; the analyzer block will be written out under each index with a TOML comment",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/remaining",
+    "kind": "state",
+    "grade": "right",
+    "answer": "shipping and webhooks",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/done-list",
+    "kind": "state",
+    "grade": "right",
+    "answer": "billing, catalog, exports, gateway, identity, notifications, reporting",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/final-report",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Inventory (YAML kept, no tests), pricing (skipped, vendored loader), and any other services with no tests",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/loader",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "tomllib",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/vendored",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "services/pricing/VENDORED.md; changes go through #platform-config",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "test_schedule.py::test_cutoff_is_string",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "test_sso.py::test_optional_issuer",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/total",
+    "kind": "value",
+    "grade": "right",
+    "answer": "12",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/ticket",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/toml-writer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/owner",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   }
+  ],
+  "summary": "Standing instructions (apply across tasks)\n- Commit messages: imperative mood, no ticket prefix.\n- Show every cluster-changing command to the user before running it (kubectl/helm); no broker restarts (needs second approver).\n- Never mock the database in tests; always run against the real Postgres container.\n- Do not touch anything under payments/legacy/.\n- Paging: page the data platform lead if Kestrel lag passes 2M events.\n- Work with incident channel and user handles as given below (used in PR/postmortem).\n\nTask 1: Kestrel consumer lag (cluster kestrel-prod-eu2, namespace ingest, topic ingest.events.v3, consumer group ingest-main)\n- Task: find why lag grew since the 14:05 UTC deploy of consumer 8.14.0 (prev 8.13.2), recover without losing events. Full rollback rejected: 8.14.0 carries the TLS CVE fix.\n- Done:\n  - Lag: 310k at 14:20, 780k at 14:50, 1,012,480 after rev 57, 1,148,902 four minutes later.\n  - 8.14.0 changed `max.poll.records` 500→50 in deploy/consumer/values.yaml (commit 3f9a2c1 \"tune poll for memory\").\n  - `helm upgrade kestrel-consumer deploy/consumer -n ingest --reuse-values --set consumer.maxPollRecords=500 --atomic --timeout 5m` → revision 57. Did not fix it: pods still had env `KESTREL_MAX_POLL_RECORDS=50`.\n  - Root cause: deploy/consumer/templates/deployment.yaml hard-codes `KESTREL_MAX_POLL_RECORDS` to \"50\" (commit 3f9a2c1); the env var overrides the ConfigMap value.\n  - Ran `kubectl -n ingest set env deployment/kestrel-consumer KESTREL_MAX_POLL_RECORDS=500` (user-approved); rollout succeeded, 12 replicas.\n  - Lag then: 1,304,117 (peak), 1,071,560, 822,945, roughly 120k/min drain. Peak stayed under the 2M paging threshold; no page needed.\n  - Created branch `fix/consumer-poll-records-env` (git checkout -b). Edited deploy/consumer/templates/deployment.yaml: the env value is now `{{ .Values.consumer.maxPollRecords | quote }}`.\n  - Noted: runbook/ConfigMap comments mention a legacy paging threshold of 5 million (SRE secondary); current policy is 2M.\n- Decided:\n  - Durable fix is the chart template change (not the kubectl env patch, which Helm would overwrite).\n  - Keep default 500 in deploy/consumer/values.yaml, add a comment pointing to #inc-4417.\n- Open:\n  - Set default `consumer.maxPollRecords` to 500 in deploy/consumer/values.yaml (currently 50) and add the #inc-4417 comment. The values.yaml read was done; the edit is not yet made.\n  - Commit the chart change on fix/consumer-poll-records-env; open draft PR, tag @rosalind-ek. Target branch for this PR was not specified in the Kestrel task.\n  - Postmortem note: incident channel #inc-4417.\n  - Consider the (non-blocking) follow-up: the autoscaler/HPA was checked and did not interfere.\n\nTask 2: Payments idempotency flake (repo with payments/; CI: .ci/pipeline.yml, `pytest -n 4 --dist loadfile payments/`, postgres:16 service)\n- Task: fix flaky `test_settle_batch_idempotent` in payments/tests/test_settlement.py (fails ~1 in 5 on CI, never locally). Rules: do not touch payments/legacy/; never mock the DB.\n- Done:\n  - Locally 20/20 serial passes; `pytest -n 4 payments/tests/test_settlement.py` reproduces failure: `AssertionError: expected 1 ledger row, found 2`.\n  - Root cause: payments/core/settlement.py `settle_batch` calls `find_by_idempotency_key` outside the transaction, then inserts: check-then-insert race under concurrent workers.\n  - User rejected an in-process lock (multiple worker processes in production). Chose option (b): unique constraint plus `ON CONFLICT DO NOTHING` and read-back.\n  - Created payments/migrations/0042_ledger_idempotency_unique.sql: `CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS ledger_entries_idempotency_key_uq ON ledger_entries (idempotency_key);` with a comment that CONCURRENTLY cannot run in a transaction (ledger_entries has ~80M rows, no table lock allowed). Migrations last existed: 0041_ledger_partition_key.sql.\n  - Edited payments/core/settlement.py: settle_batch now does `with tx() as conn: entry = insert_entry(conn, batch_id, idempotency_key, on_conflict=\"nothing\"); if entry is None: entry = find_by_idempotency_key(idempotency_key, conn=conn)`. Note: `insert_entry` already accepts `on_conflict`. Not verified whether `find_by_idempotency_key` accepts `conn=`; check.\n  - Result: `pytest -n 4 payments/tests/test_settlement.py` 50/50 runs passed.\n  - Full suite `pytest -n 4 payments/`: 318 passed, 4 skipped, 1 failed: test_refunds.py::test_refund_rounding (Decimal 10.005 vs 10.01). Known, tracked as PAY-2291; user said leave it.\n  - User then: raise RETRY_BACKOFF_MS in settle_batch from 200 to 350, then to 500 (final). Constant is in payments/core/settlement.py line 4. Only test referencing it: payments/tests/test_settlement.py:88 asserts `>= 200` (still holds).\n  - git status: M payments/core/settlement.py; ?? payments/migrations/0042_ledger_idempotency_unique.sql.\n- Decided:\n  - Option (b) over lock, migration name 0042_ledger_idempotency_unique.sql, CONCURRENTLY index build.\n  - Backoff final value 500ms (replaces 350, which replaced 200).\n  - Changelog: add entry under \"## Unreleased\" in CHANGELOG.md (existing entry: \"Add tenant currency to settlement exports.\").\n  - PR target branch: release/2026.11 (not main).\n  - Commit messages: imperative, no ticket prefix.\n- Open:\n  - Add CHANGELOG.md entry under Unreleased.\n  - Commit the changes on fix/… branch. Note: the branch fix/consumer-poll-records-env is in the Kestrel repo; the payments changes may be in a different repo or the same. Confirm which branch/repo to use before committing.\n  - Open the PR against release/2026.11 (not main).\n  - Not yet verified that the refund test/Postgres fixture applies migration 0042 correctly in CI.\n\nTask 3: Config migration YAML→TOML across services/ (different repo)\n- Task: for each service under services/: convert config.yaml to config.toml, change src/config.py loader to tomllib, run that service's tests, delete the YAML only if tests pass. Do not change values; keep comments. Services with no tests: convert but keep YAML and list at end. Do not stop to ask between services.\n- Done (services, alphabetical; 12 total: billing, catalog, exports, gateway, identity, inventory, notifications, pricing, reporting, search, shipping, webhooks):\n  - billing: converted, loader updated, 33 passed, YAML deleted (git rm).\n  - catalog: converted, loader updated, 50 passed, YAML deleted.\n  - exports: converted; test_schedule.py::test_cutoff_is_string failed since cutoff was unquoted TOML date. Fixed by quoting `cutoff = \"2026-01-31\"`; 23 passed; YAML deleted.\n  - gateway: converted, loader updated, 49 passed, YAML deleted.\n  - identity: converted; test_sso.py::test_optional_issuer failed (KeyError 'issuer_override'; YAML had `issuer_override: null`, TOML has no null). Fixed in src/config.py by adding `for key in OPTIONAL_KEYS: cfg.setdefault(key, None)` (OPTIONAL_KEYS must exist in the file; verify). 68 passed; YAML deleted.\n  - inventory: converted, loader updated; no tests (`ls services/inventory/tests` empty; pytest \"no tests ran\"). YAML KEPT. Listed at end.\n  - notifications: converted, loader updated, 40 passed, YAML deleted.\n  - reporting: converted, loader updated, 22 passed, YAML deleted.\n  - pricing: NOT migrated. Its src/config.py subclasses `vendor_cfg.SharedLoader` (FORMAT = \"yaml\"), vendored and owned by platform (#platform-config); services/pricing/VENDORED.md says do not replace. Skipped; YAML kept; list at end.\n  - search: in progress. config.yaml uses YAML anchor `&default_analyzer` shared by products and articles indexes. Plan: write the analyzer block out under each index (values identical), with a TOML comment explaining the anchor removal. Not yet written.\n  - shipping, webhooks: not yet started.\n  - Note: the config loaders for pricing and any others read via a `load(path=\"config.yaml\")` function in src/config.py. Verify Dockerfiles/README references to config.yaml: services/gateway/Dockerfile and README checks were done for hard-coded config.yaml grep; the grep for `config.yaml` in *.py/Dockerfile/*.md returned no remaining hard-coded refs in the last checks.\n  - Note: Some tool outputs were noisy; a README in services/catalog contains an unrelated `timeout_ms: 2026` line; a legacy comment exists in services/reporting about tests.\n- Decided:\n  - Keep YAML for services with no tests (inventory) and skip services requiring vendored code (pricing).\n  - Do not alter values; quote string dates.\n- Open:\n  - Finish search (write TOML with duplicated analyzer block + comment), run tests, delete YAML if passing.\n  - Migrate shipping and webhooks (convert, loader, tests, delete YAML if passing).\n  - Final report: list inventory (YAML kept, no tests) and pricing (skipped, vendored loader) plus any other services with no tests.\n\nCurrent state: I had just read services/search/config.yaml (with the YAML anchor) and stated the plan to duplicate the analyzer block with a TOML comment. Next step: write services/search/config.toml, update services/search/src/config.py loader, run `cd services/search && pytest -q`, then delete config.yaml if green; then do shipping and webhooks, then give the final report.\n\n## The user's own words in this part of the conversation\n\n- Approved, but add --atomic so it rolls back by itself if the pods do not come up, and set the timeout to 5 minutes.\n- Do (b) now, approved. Lag is at 1.2M and I have to page at 2M, so move. Open the chart fix as a draft PR afterwards and tag me, my handle is @rosalind-ek. Also note for the postmortem: the incident channel is #inc-4417.\n- Great. While it drains, prepare the chart PR. Branch name fix/consumer-poll-records-env. Keep the default at 500 in values.yaml and add a comment pointing at #inc-4417.\n- Next task, in a different repository. The test `test_settle_batch_idempotent` in payments/tests/test_settlement.py fails about one run in five on CI but never on my machine. Find out why and fix it. Two rules for this repo: do not touch anything under payments/legacy/, and never mock the database in tests here, we always run against the real Postgres container.\n- Not (a): we run several worker processes in production, so an in-process lock would not protect anything. Go with (b). The migration must be number 0042, call it 0042_ledger_idempotency_unique.sql. And build the index with CREATE UNIQUE INDEX CONCURRENTLY, the table has about 80 million rows and we cannot lock it.\n- No, leave it. That one is known and tracked in PAY-2291. While you are in settlement.py, raise the retry backoff in settle_batch from 200ms to 350ms.\n- Actually make it 500ms, I just checked the dashboard and 350 is still too tight for the settlement provider.\n- Good. Two more things before you open the PR: add an entry to CHANGELOG.md under \"Unreleased\", and target the branch release/2026.11, not main. Commit messages here are imperative mood with no ticket prefix.\n- Next task, in a different repository. Migrate every service under services/ from config.yaml to config.toml. For each service: convert the file, update the loader in src/config.py to read TOML with tomllib, run that service's tests, and delete the old YAML only once tests pass. Keep going until all of them are done, do not stop to ask me between services. If a service has no tests, convert it but keep the YAML and list it at the end. Do not change any value while converting, and keep the comments."
+ },
+ {
+  "variant": "default",
+  "fixture": "long-dev",
+  "level": "balanced",
+  "refs": false,
+  "rep": 2,
+  "words": 1209,
+  "maxWords": 1200,
+  "parts": 1,
+  "rejected": 0,
+  "outputTokens": 3713,
+  "inputTokens": 137670,
+  "seconds": 21.2,
+  "isOverTokens": false,
+  "renderedChars": 299471,
+  "summaryChars": 11173,
+  "cites": 0,
+  "unsupportedTotal": 101,
+  "unsupported": [
+   ") became revision 57 but did NOT help: the pods still ran",
+   ". The ConfigMap said",
+   "; the env var wins. The Deployment template hard-codes",
+   "maxPollRecords: 500",
+   "consumer.maxPollRecords: 500",
+   "services/search/config.toml",
+   "services/search/src/config.py"
+  ],
+  "probes": [
+   {
+    "id": "incident/goal",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "Consumer lag on ingest.events.v3 (group ingest-main) grew after the 14:05 UTC deploy",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/no-brokers",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Do not restart brokers; it needs a second approver",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/approval",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Show the user every cluster-changing command before running it",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/no-rollback",
+    "kind": "rejected",
+    "grade": "right",
+    "answer": "8.14.0 carries the TLS CVE fix",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/versions",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Deployed 8.14.0; previous was 8.13.2",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/first-fix",
+    "kind": "error",
+    "grade": "right",
+    "answer": "The Deployment hard-codes KESTREL_MAX_POLL_RECORDS=50, which overrides the ConfigMap value of 500",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/real-fix",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "kubectl set env setting KESTREL_MAX_POLL_RECORDS=500 on deployment/kestrel-consumer",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/page",
+    "kind": "value",
+    "grade": "right",
+    "answer": "2 million events; page the data platform lead",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/peak",
+    "kind": "value",
+    "grade": "right",
+    "answer": "1,304,117",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/durability",
+    "kind": "decision",
+    "grade": "wrong",
+    "answer": "The env var is hard-coded in the Deployment template (commit 3f9a2c1); durable fix is the chart template using {{ .Values.consumer.maxPollRecords | quote }}",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/branch",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "fix/consumer-poll-records-env",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/handle",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "@rosalind-ek",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/channel",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "#inc-4417",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/todo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "Set consumer.maxPollRecords: 500 (currently 50) with a comment referencing #inc-4417",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/commit",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "3f9a2c1 (\"tune poll for memory\")",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/revision",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Revision 57",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/pods",
+    "kind": "value",
+    "grade": "right",
+    "answer": "12",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/drain-rate",
+    "kind": "value",
+    "grade": "right",
+    "answer": "About 120k events per minute",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/helm-flags",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "--atomic and a 5-minute timeout (--timeout 5m)",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/early-lag",
+    "kind": "value",
+    "grade": "right",
+    "answer": "310,000 at 14:20; 780,000 at 14:50",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/lead-name",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/postmortem-date",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/dashboard",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "test_settle_batch_idempotent (payments/tests/test_settlement.py)",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/cause",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Check-then-insert race: find_by_idempotency_key runs outside the transaction, before the insert",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/assertion",
+    "kind": "error",
+    "grade": "right",
+    "answer": "Expected 1 ledger row, found 2",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/legacy",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "payments/legacy/",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/mock",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Never mock the database in tests; always run against the real Postgres container",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/rejected",
+    "kind": "rejected",
+    "grade": "right",
+    "answer": "In-process lock was rejected because several worker processes run in production, so it would not protect anything",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/migration",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "0042_ledger_idempotency_unique.sql",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/concurrently",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "CREATE UNIQUE INDEX CONCURRENTLY, because ledger_entries has about 80 million rows and cannot be locked",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/backoff",
+    "kind": "superseded",
+    "grade": "right",
+    "answer": "500 ms",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/unrelated",
+    "kind": "state",
+    "grade": "right",
+    "answer": "test_refunds.py::test_refund_rounding, tracked under PAY-2291",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/todo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "Add CHANGELOG.md entry under Unreleased, commit (imperative, no ticket prefix), and open the PR",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/branch",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "release/2026.11",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/ci-flag",
+    "kind": "value",
+    "grade": "right",
+    "answer": "CI uses -n 4 (with --dist loadfile); the user runs serially",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/commit-style",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Imperative mood, no ticket prefix",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/index-name",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "ledger_entries_idempotency_key_uq",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/verified",
+    "kind": "value",
+    "grade": "right",
+    "answer": "50 runs of pytest -n 4 on test_settlement.py; 0 failed (50/50 passed)",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/suite",
+    "kind": "value",
+    "grade": "right",
+    "answer": "318",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/backoff-test",
+    "kind": "value",
+    "grade": "right",
+    "answer": "It asserts the value is >= 200",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/reviewer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/deadline",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/pr-number",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/goal",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "Migrate each service under services/ from config.yaml to config.toml: convert, switch the loader to tomllib, run tests, delete the YAML only after tests pass",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/no-ask",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Do not stop to ask between services; keep going until all are done",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/values",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Do not change any value; keep the comments",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/delete-rule",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Only after that service's tests pass",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/blocked",
+    "kind": "state",
+    "grade": "right",
+    "answer": "pricing, because its loader subclasses the vendored vendor_cfg.SharedLoader and must not be replaced",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/notests",
+    "kind": "state",
+    "grade": "right",
+    "answer": "inventory; it has no tests, so config.yaml was kept and it is listed at the end",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-bug",
+    "kind": "error",
+    "grade": "right",
+    "answer": "Unquoted cutoff date broke test_cutoff_is_string; fixed by quoting \"2026-01-31\"",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-bug",
+    "kind": "error",
+    "grade": "right",
+    "answer": "The YAML null for issuer_override has no TOML equivalent, so the key was dropped",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-fix",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Loader sets OPTIONAL_KEYS defaults to None via setdefault; 68 tests pass",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/current",
+    "kind": "state",
+    "grade": "right",
+    "answer": "search",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/anchor",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "It uses a YAML anchor (&default_analyzer) shared by products and articles; it will be expanded into a repeated analyzer table under each index with a comment, values unchanged (not yet written)",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/remaining",
+    "kind": "state",
+    "grade": "right",
+    "answer": "shipping and webhooks",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/done-list",
+    "kind": "state",
+    "grade": "right",
+    "answer": "billing, catalog, exports, gateway, identity, notifications, reporting",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/final-report",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "pricing (skipped, vendored loader), inventory (no tests, YAML kept), and any other service with no tests",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/loader",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "tomllib",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/vendored",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "services/pricing/VENDORED.md; changes go through #platform-config",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "test_cutoff_is_string",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-test",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/total",
+    "kind": "value",
+    "grade": "right",
+    "answer": "12",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/ticket",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/toml-writer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/owner",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   }
+  ],
+  "summary": "Standing instructions (apply across tasks):\n- Work on the Kestrel cluster `kestrel-prod-eu2` via `kubectl`, namespace `ingest`; do not restart brokers (needs a second approver).\n- Show the user every cluster-changing command before running it.\n- Paging: page the data platform lead if lag passes 2 million events.\n- In `payments` repo: do not touch anything under `payments/legacy/`; never mock the database in tests, always run against the real Postgres container.\n- Commit messages: imperative mood, no ticket prefix.\n- Do not stop to ask between services in the config migration.\n\n## Task 1: Kestrel consumer lag (cluster kestrel-prod-eu2)\nTask: user is on-call; lag on `ingest.events.v3` (consumer group `ingest-main`) grew since the 14:05 UTC deploy; reduce it without losing events.\nDone:\n- Deploy at 14:05 UTC shipped consumer 8.14.0 (previous 8.13.2). Commit 3f9a2c1 \"tune poll for memory\" changed `max.poll.records` 500→50.\n- Lag: 310k at 14:20, 780k at 14:50, 1,012,480 after first restart, 1,148,902 four minutes later.\n- Full rollback rejected by user: 8.14.0 carries the TLS CVE fix.\n- Helm override `consumer.maxPollRecords=500` (`helm upgrade kestrel-consumer deploy/consumer -n ingest --reuse-values --atomic --timeout 5m`) became revision 57 but did NOT help: the pods still ran `KESTREL_MAX_POLL_RECORDS=50`. The ConfigMap said `max.poll.records: \"500\"`; the env var wins. The Deployment template hard-codes `value: \"50\"` for `KESTREL_MAX_POLL_RECORDS` (commit 3f9a2c1).\n- User approved option (b): `kubectl -n ingest set env deployment/kestrel-consumer KESTREL_MAX_POLL_RECORDS=500`, run and rollout succeeded (12/12).\n- Lag then: 1,304,117 (peak), 1,071,560, 822,945 (about 120k/min drain). Peak stayed under 2M, no page needed.\n- Chart PR work begun: `git checkout -b fix/consumer-poll-records-env` in the infra repo; edited `deploy/consumer/templates/deployment.yaml` value to `{{ .Values.consumer.maxPollRecords | quote }}`.\n- Noted: runbook line \"Legacy runbook: page the SRE secondary if lag passes 5 million\" is stale; #inc-4390 was the September outage channel.\nDecided:\n- Option (a) chart fix as durable fix; (b) for immediate stop-gap.\n- User instructions: keep default `maxPollRecords: 500` in `deploy/consumer/values.yaml` (currently still `50`, must change to 500) and add a comment pointing at #inc-4417; open the PR as a draft, tag @rosalind-ek; postmortem incident channel is #inc-4417; branch `fix/consumer-poll-records-env`.\nOpen:\n- Set `consumer.maxPollRecords: 500` in deploy/consumer/values.yaml with comment referencing #inc-4417.\n- Commit, open draft PR tagging @rosalind-ek (not yet done).\n- Verify lag keeps draining.\n\n## Task 2: payments settlement test flake (`test_settle_batch_idempotent`)\nTask: test fails ~1 in 5 on CI, never locally; find and fix.\nDone:\n- Locally 20/20 pass serially; CI runs `pytest -n 4 --dist loadfile payments/` (.ci/pipeline.yml, Postgres 16).\n- Reproduced with `pytest -n 4 payments/tests/test_settlement.py`: `AssertionError: expected 1 ledger row, found 2`.\n- Root cause: `settle_batch` in `payments/core/settlement.py` does `find_by_idempotency_key` outside the transaction, then inserts: check-then-insert race.\n- Fix (user chose (b), rejected in-process lock because several worker processes run in production):\n  - Created `payments/migrations/0042_ledger_idempotency_unique.sql` with `CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS ledger_entries_idempotency_key_uq ON ledger_entries (idempotency_key);` (no transaction wrapper; ledger_entries ~80M rows).\n  - Edited settle_batch: inside `with tx() as conn:` call `insert_entry(conn, batch_id, idempotency_key, on_conflict=\"nothing\")`; if None, `find_by_idempotency_key(idempotency_key, conn=conn)`.\n  - 50 runs of `pytest -n 4 payments/tests/test_settlement.py`: 50/50 pass.\n- Changed `RETRY_BACKOFF_MS` in settlement.py: 200 → 350 → 500 (user's final value: 500, supersedes 350 and 200). Test `payments/tests/test_settlement.py:88` asserts `>= 200`, still passes.\n- Full `pytest -n 4 payments/`: 318 passed, 4 skipped, 1 failed: `test_refunds.py::test_refund_rounding` (Decimal 10.005 != 10.01). User said leave it: known, tracked in PAY-2291.\n- `git status`: M payments/core/settlement.py (6 insertions, 5 deletions); ?? payments/migrations/0042_ledger_idempotency_unique.sql.\nDecided:\n- Not (a) in-process lock. Go with (b) unique index + ON CONFLICT DO NOTHING.\n- Migration number 0042, name 0042_ledger_idempotency_unique.sql; index built CONCURRENTLY.\nOpen:\n- CHANGELOG.md: add entry under \"## Unreleased\" (existing entry: \"Add tenant currency to settlement exports.\").\n- Commit (imperative mood, no ticket prefix), target branch release/2026.11 (not main), open PR.\n- Do not touch payments/legacy/.\n\n## Task 3: migrate services/ config.yaml → config.toml (in the same repo as Task 2 is not stated; treated as separate repository)\nTask: for each service under services/: convert config.yaml to config.toml, update src/config.py loader to tomllib, run that service's tests, delete YAML only after tests pass. No value changes, keep comments. No tests → convert but keep YAML and list at end. Don't stop to ask between services.\nServices (12): billing, catalog, exports, gateway, identity, inventory, notifications, pricing, reporting, search, shipping, webhooks.\nDone:\n- billing: config.toml written; loader updated; `pytest -q` 33 passed; `git rm` config.yaml. Complete.\n- catalog: config.toml written; loader updated; 50 passed; config.yaml removed. Complete.\n- exports: config.toml written with `cutoff = \"2026-01-31\"` quoted (initial unquoted date broke test_cutoff_is_string; fixed); loader updated; 23 passed after fix; config.yaml removed. Complete.\n- gateway: config.toml written (note `bucket_lease` and other duplicate keys appear in source YAML, copied as-is; TOML will reject duplicate keys, not yet verified); loader updated; 49 passed; config.yaml removed. Verify: duplicate keys in TOML will be a parse error, so tests passing suggests check needed. Treat as unresolved concern.\n- identity: config.toml written (`issuer_override: null` in YAML has no TOML equivalent; key dropped); loader edited to set OPTIONAL_KEYS to None via setdefault; `pytest` 68 passed after the fix; config.yaml removed. Note: an `OPTIONAL_KEYS` constant is referenced in the loader edit; confirm it is defined.\n- inventory: config.toml written, loader updated; NO tests (`services/inventory/tests` missing); config.yaml KEPT per instructions; list at end.\n- notifications: config.toml written (duplicate keys `ledger_window`, `cutoff` style duplicates present in source, copied as-is); loader updated; 40 passed; config.yaml removed.\n- reporting: config.toml written; loader updated; 22 passed; config.yaml removed.\n- pricing: SKIPPED. Loader `src/config.py` subclasses `vendor_cfg.SharedLoader` (`FORMAT = \"yaml\"`), vendored from platform team, per services/pricing/VENDORED.md must not be replaced (changes via #platform-config). Do not touch; report at end.\n- search: config.yaml read; uses YAML anchor `&default_analyzer` shared by `products` and `articles`. Plan: write the analyzer block out under each index in TOML with a comment noting the change; values identical. NOT yet written.\n- shipping, webhooks: NOT yet started.\n- Note: `services/exports` had a test failure initially (fixed). `services/identity` had `OPTIONAL_FIELDS` in tests; a Dockerfile in services/gateway has a comment about base images owned by platform (#platform-infra); no Dockerfile changes made.\nDecided:\n- Keep values, keep comments; quote dates as strings to preserve type.\n- Skip pricing (vendored loader). Keep inventory YAML (no tests).\n- For search: expand YAML anchor into repeated analyzer tables; note in comment.\nOpen:\n- Convert search (write config.toml, update src/config.py loader, run tests, delete YAML if pass; if no tests, keep YAML).\n- Convert shipping and webhooks similarly.\n- Verify gateway and notifications TOML duplicate-key handling (duplicate keys are invalid TOML; tests passed, so confirm the value semantics or whether keys were actually unique in the file).\n- Remove a services/*/requirements.txt yaml dependency only if no longer needed (not decided; grep for yaml usage pending).\n- Final report must list: pricing (skipped, vendored loader), inventory (no tests, YAML kept), plus any others with no tests.\n\n## Current state\nWas in the config migration, about to write `services/search/config.toml` (expanding the `&default_analyzer` anchor into both `products` and `articles` analyzer tables with a comment), then update `services/search/src/config.py`, run its tests, and remove the YAML if green. Remaining after search: shipping, webhooks, then final report.\n\n## Working together\n- Show every cluster-changing command to the user before running it (Kestrel).\n- Commit messages: imperative mood, no ticket prefix.\n- Don't ask between services in the config migration; do ask only where instructed.\n\n## The user's own words in this part of the conversation\n\n- Approved, but add --atomic so it rolls back by itself if the pods do not come up, and set the timeout to 5 minutes.\n- Do (b) now, approved. Lag is at 1.2M and I have to page at 2M, so move. Open the chart fix as a draft PR afterwards and tag me, my handle is @rosalind-ek. Also note for the postmortem: the incident channel is #inc-4417.\n- Great. While it drains, prepare the chart PR. Branch name fix/consumer-poll-records-env. Keep the default at 500 in values.yaml and add a comment pointing at #inc-4417.\n- Next task, in a different repository. The test `test_settle_batch_idempotent` in payments/tests/test_settlement.py fails about one run in five on CI but never on my machine. Find out why and fix it. Two rules for this repo: do not touch anything under payments/legacy/, and never mock the database in tests here, we always run against the real Postgres container.\n- Not (a): we run several worker processes in production, so an in-process lock would not protect anything. Go with (b). The migration must be number 0042, call it 0042_ledger_idempotency_unique.sql. And build the index with CREATE UNIQUE INDEX CONCURRENTLY, the table has about 80 million rows and we cannot lock it.\n- No, leave it. That one is known and tracked in PAY-2291. While you are in settlement.py, raise the retry backoff in settle_batch from 200ms to 350ms.\n- Actually make it 500ms, I just checked the dashboard and 350 is still too tight for the settlement provider.\n- Good. Two more things before you open the PR: add an entry to CHANGELOG.md under \"Unreleased\", and target the branch release/2026.11, not main. Commit messages here are imperative mood with no ticket prefix.\n- Next task, in a different repository. Migrate every service under services/ from config.yaml to config.toml. For each service: convert the file, update the loader in src/config.py to read TOML with tomllib, run that service's tests, and delete the old YAML only once tests pass. Keep going until all of them are done, do not stop to ask me between services. If a service has no tests, convert it but keep the YAML and list it at the end. Do not change any value while converting, and keep the comments."
+ },
+ {
+  "variant": "default",
+  "fixture": "long-dev",
+  "level": "balanced",
+  "refs": false,
+  "rep": 3,
+  "words": 1672,
+  "maxWords": 1200,
+  "parts": 1,
+  "rejected": 0,
+  "outputTokens": 4797,
+  "inputTokens": 137670,
+  "seconds": 24.9,
+  "isOverTokens": false,
+  "renderedChars": 299471,
+  "summaryChars": 14113,
+  "cites": 0,
+  "unsupportedTotal": 121,
+  "unsupported": [
+   "consumer.maxPollRecords: 500",
+   "open(path,\"rb\")",
+   "for key in OPTIONAL_KEYS: cfg.setdefault(key, None)",
+   "class Loader(SharedLoader): FORMAT = \"yaml\"",
+   "cd services/search && pytest -q",
+   "→ new",
+   "image.tag: 8.14.0",
+   "consumer.replicas: 12",
+   "consumer.maxPollRecords: 50",
+   "consumer.group: ingest-main",
+   "services/search/config.toml",
+   ".py/Dockerfile/.md",
+   "search/config.toml",
+   "search/src/config.py"
+  ],
+  "probes": [
+   {
+    "id": "incident/goal",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "Consumer lag on ingest.events.v3 (group ingest-main) kept growing after the 14:05 UTC deploy",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/no-brokers",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Do not restart them; a broker restart needs a second approver",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/approval",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Show each cluster-changing command to the user before running it, and get approval",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/no-rollback",
+    "kind": "rejected",
+    "grade": "right",
+    "answer": "8.14.0 includes the TLS CVE fix, and security would object",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/versions",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Deployed 8.14.0; previous was 8.13.2",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/first-fix",
+    "kind": "error",
+    "grade": "right",
+    "answer": "Pod env KESTREL_MAX_POLL_RECORDS=50 overrode the ConfigMap value of 500",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/real-fix",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "kubectl set env KESTREL_MAX_POLL_RECORDS=500 on the deployment",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/page",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Page when lag exceeds 2M, paging the data platform lead",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/peak",
+    "kind": "value",
+    "grade": "right",
+    "answer": "1,304,117",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/durability",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Helm overwrites kubectl set env on the next upgrade; durable fix is the template reading .Values.consumer.maxPollRecords",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/branch",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "fix/consumer-poll-records-env",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/handle",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "@rosalind-ek",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/channel",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "#inc-4417",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/todo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "Change maxPollRecords from 50 to 500 and add a comment pointing at #inc-4417",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/commit",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "3f9a2c1 \"tune poll for memory\"",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/revision",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Revision 57",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/pods",
+    "kind": "value",
+    "grade": "right",
+    "answer": "12",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/drain-rate",
+    "kind": "value",
+    "grade": "right",
+    "answer": "About 120k per minute",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/helm-flags",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "--atomic and a 5-minute timeout (--timeout 5m)",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/early-lag",
+    "kind": "value",
+    "grade": "right",
+    "answer": "310k at 14:20; 780k at 14:50",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/lead-name",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/postmortem-date",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/dashboard",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "test_settle_batch_idempotent in payments/tests/test_settlement.py",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/cause",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Check-then-insert race: find_by_idempotency_key ran outside the transaction",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/assertion",
+    "kind": "error",
+    "grade": "right",
+    "answer": "Expected 1 ledger row, found 2",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/legacy",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "payments/legacy/",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/mock",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Never mock the database; tests run against the real Postgres container",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/rejected",
+    "kind": "rejected",
+    "grade": "right",
+    "answer": "In-process lock (option a) was rejected because several worker processes run in production",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/migration",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "0042_ledger_idempotency_unique.sql",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/concurrently",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "CREATE UNIQUE INDEX CONCURRENTLY, because the table has about 80 million rows and cannot be locked",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/backoff",
+    "kind": "superseded",
+    "grade": "right",
+    "answer": "500ms",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/unrelated",
+    "kind": "state",
+    "grade": "right",
+    "answer": "payments/tests/test_refunds.py::test_refund_rounding, tracked under PAY-2291",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/todo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "Open the PR (with the CHANGELOG.md entry under Unreleased)",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/branch",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "release/2026.11",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/ci-flag",
+    "kind": "value",
+    "grade": "right",
+    "answer": "CI uses -n 4 (with --dist loadfile); locally tests run serially",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/commit-style",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Imperative mood, no ticket prefix",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/index-name",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "ledger_entries_idempotency_key_uq",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/verified",
+    "kind": "value",
+    "grade": "right",
+    "answer": "50 parallel runs, 0 failed",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/suite",
+    "kind": "value",
+    "grade": "right",
+    "answer": "318",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/backoff-test",
+    "kind": "value",
+    "grade": "right",
+    "answer": "It asserts the value is >= 200",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/reviewer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/deadline",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/pr-number",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/goal",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "Migrate every service under services/ from config.yaml to config.toml, switch loaders to tomllib, run each service's tests, and delete the YAML only after tests pass",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/no-ask",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Keep going through all services without stopping to ask",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/values",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "No values may change; comments must be kept",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/delete-rule",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Only once that service's tests pass",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/blocked",
+    "kind": "state",
+    "grade": "right",
+    "answer": "pricing, because its vendored loader is owned by platform and must not be replaced",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/notests",
+    "kind": "state",
+    "grade": "right",
+    "answer": "inventory; its config.yaml was kept",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-bug",
+    "kind": "error",
+    "grade": "right",
+    "answer": "test_schedule.py::test_cutoff_is_string failed (date vs string); fixed by quoting cutoff = \"2026-01-31\" in TOML",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-bug",
+    "kind": "error",
+    "grade": "right",
+    "answer": "test_sso.py::test_optional_issuer raised KeyError 'issuer_override', because the YAML null key was dropped in conversion",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-fix",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Loader now sets default None for each optional key after load",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/current",
+    "kind": "state",
+    "grade": "right",
+    "answer": "search",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/anchor",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "It uses a YAML anchor (&default_analyzer) shared by the products and articles indexes; it will be written out in full under each index with a comment",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/remaining",
+    "kind": "state",
+    "grade": "right",
+    "answer": "shipping, webhooks",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/done-list",
+    "kind": "state",
+    "grade": "right",
+    "answer": "billing, catalog, exports, gateway, identity, notifications, reporting",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/final-report",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "pricing (skipped, vendored loader) and inventory (no tests, YAML kept)",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/loader",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "tomllib",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/vendored",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "services/pricing/VENDORED.md; changes go through #platform-config",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "test_schedule.py::test_cutoff_is_string",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "test_sso.py::test_optional_issuer",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/total",
+    "kind": "value",
+    "grade": "right",
+    "answer": "12",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/ticket",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/toml-writer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/owner",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   }
+  ],
+  "summary": "Earlier summary (folded in; no detail from it dropped):\n\n## Task 1: kestrel consumer lag (cluster `kestrel-prod-eu2`, namespace `ingest`)\n- Task: user is on-call; investigate why consumer lag on `ingest.events.v3` (group `ingest-main`) kept growing since the 14:05 UTC deploy, bring it down without losing events. Do not restart brokers (needs second approver). Show every cluster-changing command before running it.\n- Done:\n  - Deploy at 14:05 UTC shipped consumer 8.14.0 (previous 8.13.2), commit 9e01b77 \"consumer: bump to 8.14.0\"; commit 3f9a2c1 \"tune poll for memory\" changed `max.poll.records` 500→50 and hard-coded `KESTREL_MAX_POLL_RECORDS` to \"50\" in deploy/consumer/templates/deployment.yaml.\n  - Lag samples: 310k (14:20), 780k (14:50), 1,012,480 (after first override), 1,148,902 (+4 min).\n  - Helm override `consumer.maxPollRecords=500` (revision 57, `--atomic --timeout 5m`, approved) did not take effect: ConfigMap had `max.poll.records: \"500\"` but pods' env `KESTREL_MAX_POLL_RECORDS=50`, which wins.\n  - Applied `kubectl -n ingest set env deployment/kestrel-consumer KESTREL_MAX_POLL_RECORDS=500` (approved); rollout succeeded, 12/12 pods.\n  - Lag after: 1,304,117 (peak) → 1,071,560 → 822,945 (~120k/min). Peak stayed under 2M paging threshold; no page needed.\n  - Created branch `fix/consumer-poll-records-env` (from git checkout -b). Edited deploy/consumer/templates/deployment.yaml: value now `{{ .Values.consumer.maxPollRecords | quote }}` (removed hard-coded 50 and comment).\n- Decided:\n  - Option (a) template fix (durable) chosen; option (b) `kubectl set env` used to stop the bleeding (Helm will overwrite on next upgrade).\n  - Rejected full rollback: 8.14.0 carries TLS CVE fix (security).\n  - Paging threshold 2M → data platform lead.\n- User instructions for the PR still pending: keep default `consumer.maxPollRecords: 500` in deploy/consumer/values.yaml (currently it reads `maxPollRecords: 50`, which must be changed to 500) and add a comment pointing at #inc-4417; open as draft PR tagging @rosalind-ek; postmortem incident channel #inc-4417.\n- Open: values.yaml default change to 500 plus comment; commit; push; draft PR to target branch (see below); tag @rosalind-ek; postmortem note of #inc-4417.\n- Also noted in environment: a legacy runbook line says \"page the SRE secondary if lag passes 5 million\" (legacy; the user's rule is 2M → data platform lead).\n\n## Task 2: payments settlement flaky test (repo with `payments/`, CI `.ci/pipeline.yml`)\n- Task: fix `payments/tests/test_settlement.py::test_settle_batch_idempotent` failing ~1 in 5 on CI, never locally. Rules: never touch `payments/legacy/`; never mock the DB (tests run against real Postgres container).\n- Done:\n  - CI runs `pytest -n 4 --dist loadfile payments/` with postgres:16 service; locally serial passed 20/20.\n  - With `pytest -n 4` the test failed: \"expected 1 ledger row, found 2\".\n  - Root cause: `settle_batch` in payments/core/settlement.py did `find_by_idempotency_key` outside the tx, then insert: check-then-insert race.\n  - Fix (user chose option b, no in-process lock): new migration `payments/migrations/0042_ledger_idempotency_unique.sql` containing `CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS ledger_entries_idempotency_key_uq ON ledger_entries (idempotency_key);` with a comment that CONCURRENTLY can't run inside a transaction (table ~80M rows). Migration naming: 0042_ledger_idempotency_unique.sql.\n  - settle_batch edited: inside `with tx() as conn:` call `insert_entry(conn, batch_id, idempotency_key, on_conflict=\"nothing\")`; if None, `find_by_idempotency_key(idempotency_key, conn=conn)`.\n  - Verified: `pytest -n 4 payments/tests/test_settlement.py` 50/50 runs passed.\n  - Full suite `pytest -n 4 payments/`: 318 passed, 4 skipped, 1 failed: `test_refunds.py::test_refund_rounding` (Decimal 10.005 != 10.01) — unrelated; user said leave it, known in PAY-2291.\n  - User then changed RETRY_BACKOFF_MS in settlement.py: 200 → 350 → 500 (final). The only test referencing it (`test_settlement.py:88`) asserts `>= 200`, still holds.\n  - `git status`: M payments/core/settlement.py (6 insertions, 5 deletions per diff stat at that time, before the backoff edits; backoff change also in same file), ?? payments/migrations/0042_ledger_idempotency_unique.sql.\n- Decided: option (b) over (a) lock; migration number 0042 with exact name; CONCURRENTLY.\n- Open: nothing else for this task beyond the PR (below). Do not touch payments/legacy/.\n\n## Cross-cutting standing instructions (apply to both repos/tasks)\n- Show every cluster-changing command to the user before running it (kubectl/helm); broker restarts need second approver.\n- Paging: lag > 2M → page data platform lead.\n- Never mock the database in payments tests; DB is real Postgres container.\n- Commit messages: imperative mood, no ticket prefix.\n- PR target branch: release/2026.11 (NOT main) — user instruction for the chart PR and the payments work; CHANGELOG.md entry under \"Unreleased\" (existing entry: \"Add tenant currency to settlement exports.\").\n- Do not change values when converting configs; keep comments.\n\n## Task 3 (current, in progress): migrate services/ config.yaml → config.toml\n- Task: for every service under services/: convert config.yaml to config.toml (no value changes, keep comments), update src/config.py loader to read TOML with tomllib (`import tomllib`, `open(path,\"rb\")`, `tomllib.load`, default path \"config.toml\"), run that service's tests, delete the old YAML only once tests pass. Keep going without asking between services. Services with no tests: convert but keep the YAML, list them at the end.\n- Services: billing, catalog, exports, gateway, identity, inventory, notifications, pricing, reporting, search, shipping, webhooks (12).\n- Done:\n  - billing: config.toml written; loader updated; `pytest -q` 33 passed; config.yaml git rm'd.\n  - catalog: config.toml; loader; 50 passed; yaml git rm'd.\n  - exports: config.toml; loader; first run failed (`test_schedule.py::test_cutoff_is_string`, date vs string): YAML `cutoff: \"2026-01-31\"` was quoted; fixed TOML to `cutoff = \"2026-01-31\"`; then 23 passed; yaml git rm'd.\n  - gateway: config.toml; loader; 49 passed; yaml git rm'd.\n  - identity: config.toml written (YAML `issuer_override: null` has no TOML equivalent; key was dropped in conversion). Loader changed: after load, `for key in OPTIONAL_KEYS: cfg.setdefault(key, None)` (NOTE: `OPTIONAL_KEYS` name is used in the edit; the file-level definition was not confirmed in transcript—verify before relying on it). Tests: first run failed `test_sso.py::test_optional_issuer` KeyError 'issuer_override'; after loader fix `68 passed`; yaml git rm'd.\n  - inventory: config.toml written, loader updated, but NO tests exist (`ls services/inventory/tests` empty; pytest \"no tests ran\"). Per instructions: keep `services/inventory/config.yaml` and list at end. Note: the inventory config.yaml was NOT removed (correct).\n  - notifications: config.toml written; loader; 40 passed; yaml git rm'd.\n  - reporting: config.toml written; loader; 22 passed; yaml git rm'd.\n  - pricing: SKIPPED. Loader `services/pricing/src/config.py` does `from vendor_cfg import SharedLoader` with `class Loader(SharedLoader): FORMAT = \"yaml\"`; services/pricing/VENDORED.md says vendored loader owned by platform (#platform-config), only reads YAML, do not replace. pricing config.yaml left in place; list at end.\n  - search: config.yaml read. Has YAML anchor `analyzers: &default_analyzer` shared by `products` and `articles` indexes; plan: write analyzer block out under each index in TOML (same values), with a TOML comment noting the de-sharing. NOT YET WRITTEN. Search tests not yet run.\n- Open:\n  - search: write services/search/config.toml, update src/config.py loader, run tests, delete YAML if pass.\n  - shipping: not yet read.\n  - webhooks: not yet read.\n  - Pricing: skipped (report).\n  - Inventory: converted, no tests, YAML kept (report).\n  - Final report list: pricing (vendored loader blocks migration), inventory (no tests, YAML kept).\n  - Note: several config.toml files were written before verifying `git status`; also, the repo was tracked with `git rm` of YAML — ensure services' Dockerfiles/README references are checked (grep found no hard-coded `config.yaml` references in .py/Dockerfile/.md after conversions).\n- Current state: was converting services/search/config.yaml (about to write search/config.toml with the anchor expanded per index and a comment). Next step: write it, edit search/src/config.py loader, run `cd services/search && pytest -q`, then `git rm` the YAML if green; then shipping, webhooks; then final summary listing pricing (skipped) and inventory (no tests, YAML kept).\n- Exact loader edit pattern used for each service: old `import yaml\\n\\ndef load(path=\"config.yaml\"):\\n    with open(path) as f:\\n        return yaml.safe_load(f)` → new `import tomllib\\n\\ndef load(path=\"config.toml\"):\\n    with open(path, \"rb\") as f:\\n        return tomllib.load(f)`.\n\n## Other facts\n- Chart/consumer: deploy/consumer/values.yaml currently has `image.tag: 8.14.0`, `consumer.replicas: 12`, `consumer.maxPollRecords: 50` (to change to 500 with comment #inc-4417), `consumer.group: ingest-main`.\n- Incident channel for postmortem: #inc-4417. User handle: @rosalind-ek.\n- Ticket PAY-2219 mentioned in code comments (partial settlement bug); PAY-2291 known refund rounding failure.\n\n\n## The user's own words in this part of the conversation\n\n- [m0] (Task 1) Lag on ingest.events.v3 keeps growing since the 14:05 deploy. Help me find out why and get it back down, without losing events. Do not restart brokers, that needs a second approver.\n- [m21] No full rollback: 8.14.0 has the TLS CVE fix and security will have my head.\n- Task 1 follow-up: \"Do (b) now, approved. Lag is at 1.2M and I have to page at 2M, so move. Open the chart fix as a draft PR afterwards and tag me, my handle is @rosalind-ek. Also note for the postmortem: the incident channel is #inc-4417.\"\n- \"Great. While it drains, prepare the chart PR. Branch name fix/consumer-poll-records-env. Keep the default at 500 in values.yaml and add a comment pointing at #inc-4417.\"\n- Task 2: \"The test `test_settle_batch_idempotent` ... fails about one run in five on CI but never on my machine. Find out why and fix it. Two rules for this repo: do not touch anything under payments/legacy/, and never mock the database in tests here, we always run against the real Postgres container.\"\n- \"Not (a): we run several worker processes in production, so an in-process lock would not protect anything. Go with (b). The migration must be number 0042, call it 0042_ledger_idempotency_unique.sql. And build the index with CREATE UNIQUE INDEX CONCURRENTLY, the table has about 80 million rows and we cannot lock it.\"\n- \"No, leave it. That one is known and tracked in PAY-2291. While you are in settlement.py, raise the retry backoff in settle_batch from 200ms to 350ms.\"\n- \"Actually make it 500ms, I just checked the dashboard and 350 is still too tight for the settlement provider.\"\n- \"Good. Two more things before you open the PR: add an entry to CHANGELOG.md under \"Unreleased\", and target the branch release/2026.11, not main. Commit messages here are imperative mood with no ticket prefix.\"\n- Task 3: \"Next task, in a different repository. Migrate every service under services/ from config.yaml to config.toml. For each service: convert the file, update the loader in src/config.py to read TOML with tomllib, run that service's tests, and delete the old YAML only once tests pass. Keep going until all of them are done, do not stop to ask me between services. If a service has no tests, convert it but keep the YAML and list it at the end. Do not change any value while converting, and keep the comments.\"\n\n## Task 3 state\n- Current state: converting services/search/config.yaml; next steps as in the summary above.\n\n## The user's own words in this part of the conversation\n\n- Approved, but add --atomic so it rolls back by itself if the pods do not come up, and set the timeout to 5 minutes.\n- Do (b) now, approved. Lag is at 1.2M and I have to page at 2M, so move. Open the chart fix as a draft PR afterwards and tag me, my handle is @rosalind-ek. Also note for the postmortem: the incident channel is #inc-4417.\n- Great. While it drains, prepare the chart PR. Branch name fix/consumer-poll-records-env. Keep the default at 500 in values.yaml and add a comment pointing at #inc-4417.\n- Next task, in a different repository. The test `test_settle_batch_idempotent` in payments/tests/test_settlement.py fails about one run in five on CI but never on my machine. Find out why and fix it. Two rules for this repo: do not touch anything under payments/legacy/, and never mock the database in tests here, we always run against the real Postgres container.\n- Not (a): we run several worker processes in production, so an in-process lock would not protect anything. Go with (b). The migration must be number 0042, call it 0042_ledger_idempotency_unique.sql. And build the index with CREATE UNIQUE INDEX CONCURRENTLY, the table has about 80 million rows and we cannot lock it.\n- No, leave it. That one is known and tracked in PAY-2291. While you are in settlement.py, raise the retry backoff in settle_batch from 200ms to 350ms.\n- Actually make it 500ms, I just checked the dashboard and 350 is still too tight for the settlement provider.\n- Good. Two more things before you open the PR: add an entry to CHANGELOG.md under \"Unreleased\", and target the branch release/2026.11, not main. Commit messages here are imperative mood with no ticket prefix.\n- Next task, in a different repository. Migrate every service under services/ from config.yaml to config.toml. For each service: convert the file, update the loader in src/config.py to read TOML with tomllib, run that service's tests, and delete the old YAML only once tests pass. Keep going until all of them are done, do not stop to ask me between services. If a service has no tests, convert it but keep the YAML and list it at the end. Do not change any value while converting, and keep the comments."
+ },
+ {
+  "variant": "default",
+  "fixture": "long-dev",
+  "level": "balanced",
+  "refs": false,
+  "rep": 4,
+  "words": 1289,
+  "maxWords": 1200,
+  "parts": 1,
+  "rejected": 0,
+  "outputTokens": 3965,
+  "inputTokens": 137670,
+  "seconds": 18.9,
+  "isOverTokens": false,
+  "renderedChars": 299471,
+  "summaryChars": 11851,
+  "cites": 0,
+  "unsupportedTotal": 101,
+  "unsupported": [
+   "consumer.maxPollRecords: 50",
+   "services/search/config.toml",
+   "services/search/src/config.py",
+   "cd services/search && pytest -q",
+   "git rm services/search/config.yaml"
+  ],
+  "probes": [
+   {
+    "id": "incident/goal",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "Consumer lag on ingest.events.v3 (group ingest-main) grew after the 14:05 UTC deploy",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/no-brokers",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Do not restart brokers; it needs a second approver",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/approval",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Show the command to the user and get their approval first",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/no-rollback",
+    "kind": "rejected",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/versions",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Deployed 8.14.0; previous was 8.13.2",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/first-fix",
+    "kind": "error",
+    "grade": "right",
+    "answer": "Pods still had env KESTREL_MAX_POLL_RECORDS=50, and the env var overrides the ConfigMap value",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/real-fix",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "kubectl set env KESTREL_MAX_POLL_RECORDS=500 on deployment/kestrel-consumer",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/page",
+    "kind": "value",
+    "grade": "right",
+    "answer": "At 2M lag, page the data platform lead",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/peak",
+    "kind": "value",
+    "grade": "right",
+    "answer": "1,304,117",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/durability",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "kubectl fix is overwritten by the next Helm upgrade; durable fix is the chart template using .Values.consumer.maxPollRecords",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/branch",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "fix/consumer-poll-records-env",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/handle",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "@rosalind-ek",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/channel",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "#inc-4417",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/todo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "Change consumer.maxPollRecords default from 50 to 500, with a comment referencing #inc-4417",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/commit",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "3f9a2c1 (\"tune poll for memory\")",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/revision",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Revision 57",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/pods",
+    "kind": "value",
+    "grade": "right",
+    "answer": "12",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/drain-rate",
+    "kind": "value",
+    "grade": "right",
+    "answer": "About 120k events per minute",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/helm-flags",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "--atomic and a 5-minute timeout",
+    "isQuoted": true
+   },
+   {
+    "id": "incident/early-lag",
+    "kind": "value",
+    "grade": "right",
+    "answer": "310k at 14:20; 780k at 14:50",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/lead-name",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/postmortem-date",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/dashboard",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "test_settle_batch_idempotent",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/cause",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Check-then-insert outside the transaction, creating a race between concurrent calls with the same key",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/assertion",
+    "kind": "error",
+    "grade": "right",
+    "answer": "Expected 1 ledger row, found 2",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/legacy",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "payments/legacy/",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/mock",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Never mock the database; always use the real Postgres container",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/rejected",
+    "kind": "rejected",
+    "grade": "right",
+    "answer": "In-process lock; production runs several worker processes, so it would not protect anything",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/migration",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "0042_ledger_idempotency_unique.sql",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/concurrently",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "CREATE UNIQUE INDEX CONCURRENTLY, because the table has about 80M rows and cannot be locked",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/backoff",
+    "kind": "superseded",
+    "grade": "right",
+    "answer": "500ms",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/unrelated",
+    "kind": "state",
+    "grade": "right",
+    "answer": "test_refund_rounding, tracked under PAY-2291",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/todo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "Add CHANGELOG entry under Unreleased, write the commit, and open the PR",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/branch",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "release/2026.11",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/ci-flag",
+    "kind": "value",
+    "grade": "right",
+    "answer": "-n 4 (pytest-xdist parallel run)",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/commit-style",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Imperative mood, no ticket prefix",
+    "isQuoted": true
+   },
+   {
+    "id": "flaky-test/index-name",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "ledger_entries_idempotency_key_uq",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/verified",
+    "kind": "value",
+    "grade": "right",
+    "answer": "50 parallel runs, 0 failed",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/suite",
+    "kind": "value",
+    "grade": "right",
+    "answer": "318",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/backoff-test",
+    "kind": "value",
+    "grade": "right",
+    "answer": "settlement.RETRY_BACKOFF_MS >= 200",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/reviewer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/deadline",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/pr-number",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/goal",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "Migrate every services/ service from config.yaml to config.toml, keep comments and values, switch the loader to tomllib, run tests, and delete the YAML only after tests pass",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/no-ask",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Do not stop to ask between services; keep going",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/values",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "No values may change; comments must be kept",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/delete-rule",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Only after that service's tests pass",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/blocked",
+    "kind": "state",
+    "grade": "right",
+    "answer": "pricing, because its loader is a vendored platform-team SharedLoader that must not be replaced",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/notests",
+    "kind": "state",
+    "grade": "right",
+    "answer": "inventory has no tests; its config.yaml is kept and it is listed at the end",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-bug",
+    "kind": "error",
+    "grade": "right",
+    "answer": "A bare date changed type; fixed by quoting cutoff as \"2026-01-31\"",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-bug",
+    "kind": "error",
+    "grade": "right",
+    "answer": "test_optional_issuer failed with KeyError 'issuer_override', since TOML has no null",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-fix",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Loader sets OPTIONAL_KEYS defaults to None via setdefault",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/current",
+    "kind": "state",
+    "grade": "right",
+    "answer": "search",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/anchor",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "It uses a YAML anchor shared by products and articles; the analyzer block will be written out under each index with a comment",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/remaining",
+    "kind": "state",
+    "grade": "right",
+    "answer": "shipping, webhooks",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/done-list",
+    "kind": "state",
+    "grade": "right",
+    "answer": "billing, catalog, exports, gateway, identity, notifications, reporting",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/final-report",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "inventory (no tests, YAML kept) and pricing (vendored loader, not migrated)",
+    "isQuoted": true
+   },
+   {
+    "id": "migration/loader",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "tomllib",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/vendored",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "services/pricing/VENDORED.md; changes go through #platform-config",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-test",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "test_optional_issuer",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/total",
+    "kind": "value",
+    "grade": "right",
+    "answer": "12",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/ticket",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/toml-writer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/owner",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   }
+  ],
+  "summary": "Working on this session's tasks, oldest first.\n\n## Task 1: Kestrel consumer lag (cluster kestrel-prod-eu2, namespace ingest)\n\nTask: user is on-call. Investigate why consumer lag on `ingest.events.v3` (group `ingest-main`) grew since the 14:05 UTC deploy, get it back down without losing events. Do not restart brokers (needs a second approver). Page the data platform lead if lag passes 2M.\n\nDone:\n- Lag 310k at 14:20, 780k at 14:50, 1,012,480 after first rollout, 1,148,902 four minutes later.\n- Deploy 8.14.0 (previous 8.13.2) at 14:05 UTC. Commit 3f9a2c1 \"tune poll for memory\" changed `max.poll.records` 500→50.\n- Helm upgrade to revision 57 with `--reuse-values --set consumer.maxPollRecords=500 --atomic --timeout 5m`. Did NOT fix it: pods still had env `KESTREL_MAX_POLL_RECORDS=50`. ConfigMap had `max.poll.records: \"500\"`; env var wins.\n- Root cause: `deploy/consumer/templates/deployment.yaml` hard-codes `KESTREL_MAX_POLL_RECORDS` value \"50\" (commit 3f9a2c1), ignoring Helm value.\n- Applied `kubectl -n ingest set env deployment/kestrel-consumer KESTREL_MAX_POLL_RECORDS=500` (user approved, rollout succeeded, 12 replicas). Helm will overwrite on next upgrade.\n- Lag after: 1,304,117 (peak), 1,071,560, 822,945 (about 120k/min draining). Peak stayed under 2M; no page needed.\n- Chart fix on branch `fix/consumer-poll-records-env` (created via `git checkout -b`). Edited `deploy/consumer/templates/deployment.yaml`: replaced hard-coded line with `value: {{ .Values.consumer.maxPollRecords | quote }}`. `deploy/consumer/values.yaml` default `consumer.maxPollRecords: 50` was read but NOT yet changed to 500.\n- Note: the \"legacy runbook: page SRE secondary at 5M\" line in tool output is a stale comment; the paging rule is 2M per the user.\n\nDecided:\n- Use `kubectl set env` now (stop the bleeding) and template fix as durable fix; user approved.\n- User wants: default stays 500 in values.yaml with comment pointing at #inc-4417; open the chart PR as a draft tagged to @rosalind-ek; incident channel #inc-4417 for postmortem.\n\nOpen:\n- Change `consumer.maxPollRecords` default in deploy/consumer/values.yaml from 50 to 500 with comment referencing #inc-4417.\n- Commit, open draft PR from fix/consumer-poll-records-env, tag @rosalind-ek.\n- Postmortem note: incident channel #inc-4417.\n- Lag was still draining at last check; verify it returns to normal.\n\n## Task 2: payments flaky test `test_settle_batch_idempotent` (repo payments/)\n\nRules from user for this repo: do NOT touch anything under `payments/legacy/`; NEVER mock the database in tests (always real Postgres container).\n\nDone:\n- Test fails ~1 in 5 on CI. CI (`.ci/pipeline.yml`) runs `pytest -n 4 --dist loadfile payments/` against postgres:16. Local serial runs passed 20/20.\n- With `pytest -n 4` the test failed: `AssertionError: expected 1 ledger row, found 2`.\n- Root cause: `settle_batch` in `payments/core/settlement.py` did check-then-insert: `find_by_idempotency_key` outside the `tx()` transaction, then `insert_entry`. Race between concurrent calls with same key.\n- User rejected in-process lock (multiple worker processes in prod). Chose option (b): unique constraint + `ON CONFLICT DO NOTHING` then read back.\n- Created `payments/migrations/0042_ledger_idempotency_unique.sql` with `CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS ledger_entries_idempotency_key_uq ON ledger_entries (idempotency_key);` (table ~80M rows; user required CONCURRENTLY). Comment line says no transaction, since CONCURRENTLY cannot run in one. Note: the migration file is the only migration added; latest prior was 0041_ledger_partition_key.sql.\n- Edited `payments/core/settlement.py`: inside `with tx() as conn:` call `insert_entry(conn, batch_id, idempotency_key, on_conflict=\"nothing\")`; if None, `find_by_idempotency_key(idempotency_key, conn=conn)`. `insert_entry` already accepts `on_conflict` (confirmed in payments/core/ledger.py).\n- Changed `RETRY_BACKOFF_MS` in settlement.py: 200 → 350 → 500 (user's final request: 500ms, since 350 too tight for settlement provider). Test `payments/tests/test_settlement.py:88` asserts `settlement.RETRY_BACKOFF_MS >= 200`, still passes.\n- Verification: 50 runs of `pytest -n 4 payments/tests/test_settlement.py` → 50× \"12 passed\". Full `pytest -n 4 payments/` → 1 failed (`test_refunds.py::test_refund_rounding`, Decimal 10.005 vs 10.01), 318 passed, 4 skipped. User said leave it: known, tracked in PAY-2291.\n- `git status`: M payments/core/settlement.py; ?? payments/migrations/0042_ledger_idempotency_unique.sql. 6 insertions, 5 deletions in settlement.py (before backoff edit tally; re-check).\n\nDecided:\n- No in-process lock; DB unique constraint.\n- Do not fix test_refund_rounding (PAY-2291).\n\nOpen:\n- Add CHANGELOG.md entry under \"## Unreleased\" (existing entry: \"- Add tenant currency to settlement exports.\"). Describe the fix (unique idempotency index, ON CONFLICT, backoff 500ms).\n- Commit message: imperative mood, no ticket prefix.\n- Open PR targeting branch `release/2026.11` (NOT main). Note: this is in the payments repo; the chart PR task above is in the Kestrel repo. Verify which repo the branch lives in before pushing.\n- Migration 0042 is outside the no-mock/legacy rules; keep CONCURRENTLY.\n\n## Task 3: migrate services/ from config.yaml to config.toml (in services repo)\n\nTask: for every service under `services/`: convert `config.yaml` → `config.toml` keeping comments, values identical; update loader `src/config.py` to use `tomllib` reading `config.toml` (binary mode); run that service's tests; delete the YAML only after tests pass. Keep going without asking. Services with no tests: convert but keep YAML and list at end. Do not change any value. Do not stop to ask between services.\n\nDone (status per service):\n- billing: converted, loader updated, tests 33 passed, YAML deleted (git rm).\n- catalog: converted, loader updated, tests 50 passed, YAML deleted.\n- exports: converted, loader updated. Fixed `cutoff` to quoted `\"2026-01-31\"` (was bare date; type change). Tests 23 passed after fix, YAML deleted.\n- gateway: converted, loader updated, tests 49 passed, YAML deleted.\n- identity: converted, loader updated (added `OPTIONAL_KEYS` setdefault None for `issuer_override: null`, since TOML has no null). Tests 68 passed, YAML deleted. Note: the earlier test failure was `test_optional_issuer` KeyError 'issuer_override'. Verify OPTIONAL_KEYS is defined in src/config.py (edit referenced it; not confirmed in reads).\n- inventory: converted, loader updated. NO TESTS (ls services/inventory/tests empty, pytest \"no tests ran\"). KEEP `services/inventory/config.yaml`; list at end.\n- notifications: converted, loader updated, tests 40 passed, YAML deleted.\n- reporting: converted, loader updated, tests 22 passed, YAML deleted.\n- pricing: SKIPPED. Loader `src/config.py` subclasses `vendor_cfg.SharedLoader` (`FORMAT = \"yaml\"`), owned by platform team, `services/pricing/VENDORED.md` says do not replace; changes via #platform-config. YAML not touched. Report at end.\n- search: IN PROGRESS. config.yaml uses YAML anchor `&default_analyzer` shared by `products` and `articles`. Plan: write analyzer block out under each index in TOML (values identical), with a comment noting anchors are not supported in TOML. Not yet written.\n- Remaining after search: none listed beyond the above? Services list: billing, catalog, exports, gateway, identity, inventory, notifications, pricing, reporting, search, shipping, webhooks. NOT YET DONE: shipping, webhooks, search (in progress).\n- Note: `services/shared/README.md`, `services/gateway/Dockerfile` contain no config.yaml refs found by grep (grep showed none remaining). Dockerfile copy check was pending for each service (agent noted \"Checking the Dockerfile copies the new file\" but did not confirm edits; treat as unverified).\n- Possible stray: a comment \"# services/reporting had no tests until 2025\" appears in tool output (noise, ignore).\n\nOpen:\n- search: write config.toml (anchor expanded, comment), update src/config.py loader, run tests, delete config.yaml if passing.\n- shipping, webhooks: same procedure, unread so far.\n- inventory: keep config.yaml, list as no-tests.\n- pricing: skipped (vendored loader), list at end.\n- Final report: list inventory (no tests, YAML kept) and pricing (vendored loader, not migrated).\n- Confirm Dockerfile/requirements do not still reference config.yaml or PyYAML needs; pricing still needs PyYAML.\n\n## Standing instructions (apply throughout)\n- Kestrel: no broker restarts; show cluster-changing commands to user before running (user approved specific commands); paging threshold 2M events, page data platform lead; incident channel #inc-4417; PR handle @rosalind-ek.\n- payments repo: never touch payments/legacy/; never mock the DB in tests; commit messages imperative, no ticket prefix; CHANGELOG entry under Unreleased; PR target release/2026.11, not main; leave test_refund_rounding (PAY-2291) alone.\n- services migration: no value changes; keep comments; delete YAML only after tests pass; don't stop to ask between services; list no-test services at end.\n\n## Current state\nI was writing `services/search/config.toml`, expanding the `&default_analyzer` anchor into both `products` and `articles` indexes, with a comment explaining the change. Next: write the file, update `services/search/src/config.py` to tomllib, run `cd services/search && pytest -q`, then `git rm services/search/config.yaml` if green. Then shipping, webhooks, then the Kestrel chart values/PR, payments CHANGELOG/PR, and the final report.\n\n\nOutput only the summary, starting with the earlier summary content kept and updated.\n\n## The user's own words in this part of the conversation\n\n- Approved, but add --atomic so it rolls back by itself if the pods do not come up, and set the timeout to 5 minutes.\n- Do (b) now, approved. Lag is at 1.2M and I have to page at 2M, so move. Open the chart fix as a draft PR afterwards and tag me, my handle is @rosalind-ek. Also note for the postmortem: the incident channel is #inc-4417.\n- Great. While it drains, prepare the chart PR. Branch name fix/consumer-poll-records-env. Keep the default at 500 in values.yaml and add a comment pointing at #inc-4417.\n- Next task, in a different repository. The test `test_settle_batch_idempotent` in payments/tests/test_settlement.py fails about one run in five on CI but never on my machine. Find out why and fix it. Two rules for this repo: do not touch anything under payments/legacy/, and never mock the database in tests here, we always run against the real Postgres container.\n- Not (a): we run several worker processes in production, so an in-process lock would not protect anything. Go with (b). The migration must be number 0042, call it 0042_ledger_idempotency_unique.sql. And build the index with CREATE UNIQUE INDEX CONCURRENTLY, the table has about 80 million rows and we cannot lock it.\n- No, leave it. That one is known and tracked in PAY-2291. While you are in settlement.py, raise the retry backoff in settle_batch from 200ms to 350ms.\n- Actually make it 500ms, I just checked the dashboard and 350 is still too tight for the settlement provider.\n- Good. Two more things before you open the PR: add an entry to CHANGELOG.md under \"Unreleased\", and target the branch release/2026.11, not main. Commit messages here are imperative mood with no ticket prefix.\n- Next task, in a different repository. Migrate every service under services/ from config.yaml to config.toml. For each service: convert the file, update the loader in src/config.py to read TOML with tomllib, run that service's tests, and delete the old YAML only once tests pass. Keep going until all of them are done, do not stop to ask me between services. If a service has no tests, convert it but keep the YAML and list it at the end. Do not change any value while converting, and keep the comments."
+ }
+]

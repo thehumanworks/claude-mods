@@ -1,0 +1,322 @@
+[
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 0,
+  "words": 945,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 1,
+  "words": 1004,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 2,
+  "words": 780,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 3,
+  "words": 927,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 4,
+  "words": 949,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 5,
+  "words": 1062,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 6,
+  "words": 885,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 7,
+  "words": 1099,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 8,
+  "words": 963,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 9,
+  "words": 691,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 10,
+  "words": 887,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 11,
+  "words": 908,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 12,
+  "words": 871,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 13,
+  "words": 1151,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 14,
+  "words": 680,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 15,
+  "words": 1038,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 16,
+  "words": 972,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 17,
+  "words": 735,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 18,
+  "words": 796,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 19,
+  "words": 797,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 0,
+  "words": 780,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 1,
+  "words": 689,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 2,
+  "words": 789,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 3,
+  "words": 902,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 4,
+  "words": 759,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 5,
+  "words": 693,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 6,
+  "words": 708,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 7,
+  "words": 725,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 8,
+  "words": 842,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 9,
+  "words": 709,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 10,
+  "words": 774,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 11,
+  "words": 823,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 12,
+  "words": 738,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 13,
+  "words": 719,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 14,
+  "words": 825,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 15,
+  "words": 743,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 16,
+  "words": 690,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 17,
+  "words": 766,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 18,
+  "words": 810,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-dev",
+  "level": "aggressive",
+  "rep": 19,
+  "words": 956,
+  "rejected": 0
+ }
+]

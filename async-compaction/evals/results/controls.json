@@ -1,0 +1,1862 @@
+{
+ "long-dev": {
+  "full": [
+   {
+    "id": "incident/goal",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "Consumer lag on topic ingest.events.v3 keeps growing since the 14:05 UTC deploy",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/no-brokers",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Do not restart brokers; a broker restart needs a second approver",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/approval",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "The user must be shown and approve each command that changes the cluster before it runs",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/no-rollback",
+    "kind": "rejected",
+    "grade": "right",
+    "answer": "8.14.0 includes the TLS library CVE security fix, which a rollback would remove",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/versions",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Deployed 8.14.0; previous was 8.13.2",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/first-fix",
+    "kind": "error",
+    "grade": "right",
+    "answer": "The Deployment template hard-codes KESTREL_MAX_POLL_RECORDS=50, and the env var overrides the ConfigMap value that Helm changed",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/real-fix",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Setting KESTREL_MAX_POLL_RECORDS=500 on the deployment with kubectl set env, followed by a successful rollout",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/page",
+    "kind": "value",
+    "grade": "right",
+    "answer": "2 million events; the user must page the data platform lead",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/peak",
+    "kind": "value",
+    "grade": "right",
+    "answer": "1,304,117 events",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/durability",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Helm overwrites the kubectl change on the next upgrade; the durable fix is a chart change so the env var reads {{ .Values.consumer.maxPollRecords }}",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/branch",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "fix/consumer-poll-records-env",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/handle",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "@rosalind-ek",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/channel",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "#inc-4417",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/todo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "Keep the default at 500 and add a comment pointing at #inc-4417 (it is currently 50)",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/commit",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "Commit 3f9a2c1 \"tune poll for memory\"",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/revision",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Revision 57",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/pods",
+    "kind": "value",
+    "grade": "right",
+    "answer": "12 pods",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/drain-rate",
+    "kind": "value",
+    "grade": "right",
+    "answer": "About 120k events a minute; the backlog would clear in roughly seven minutes",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/helm-flags",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "--atomic and --timeout 5m",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/early-lag",
+    "kind": "value",
+    "grade": "right",
+    "answer": "310k at 14:20 and 780k at 14:50",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/lead-name",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/postmortem-date",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/dashboard",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "test_settle_batch_idempotent",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/cause",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "settle_batch checks find_by_idempotency_key outside the transaction that inserts, so concurrent calls with the same key can both insert (check-then-insert race)",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/assertion",
+    "kind": "error",
+    "grade": "right",
+    "answer": "Expected 1 ledger row, found 2",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/legacy",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "payments/legacy/",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/mock",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Never mock the database in tests; always run against the real Postgres container",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/rejected",
+    "kind": "rejected",
+    "grade": "right",
+    "answer": "The in-process threading.Lock, because several worker processes run in production and an in-process lock would protect nothing",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/migration",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "0042_ledger_idempotency_unique.sql",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/concurrently",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "CREATE UNIQUE INDEX CONCURRENTLY, because the table has about 80 million rows and cannot be locked",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/backoff",
+    "kind": "superseded",
+    "grade": "right",
+    "answer": "500ms",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/unrelated",
+    "kind": "state",
+    "grade": "right",
+    "answer": "test_refund_rounding in payments/tests/test_refunds.py, tracked in PAY-2291",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/todo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "Add a CHANGELOG.md entry under Unreleased and open the PR targeting release/2026.11",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/branch",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "release/2026.11",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/ci-flag",
+    "kind": "value",
+    "grade": "right",
+    "answer": "-n 4 (xdist)",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/commit-style",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Imperative mood with no ticket prefix",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/index-name",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "ledger_entries_idempotency_key_uq",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/verified",
+    "kind": "value",
+    "grade": "right",
+    "answer": "50 parallel runs with -n 4, 0 failed",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/suite",
+    "kind": "value",
+    "grade": "right",
+    "answer": "318 passed (1 failed, 4 skipped)",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/backoff-test",
+    "kind": "value",
+    "grade": "right",
+    "answer": "It asserts settlement.RETRY_BACKOFF_MS >= 200",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/reviewer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/deadline",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/pr-number",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/goal",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "Migrate every service under services/ from config.yaml to config.toml: convert each file, switch the loader in src/config.py to tomllib, run tests, and delete the YAML only after tests pass",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/no-ask",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Do not stop to ask between services; keep going until all are done",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/values",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "No value may change during conversion; comments must be kept",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/delete-rule",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Only once that service's tests pass",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/blocked",
+    "kind": "state",
+    "grade": "right",
+    "answer": "pricing: its loader subclasses vendor_cfg.SharedLoader, which only reads YAML and is platform-owned and must not be replaced",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/notests",
+    "kind": "state",
+    "grade": "right",
+    "answer": "inventory; it was converted and its loader updated, but config.yaml was kept and it is listed at the end",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-bug",
+    "kind": "error",
+    "grade": "right",
+    "answer": "test_cutoff_is_string failed because the unquoted TOML date became a date instead of a string; fixed by quoting cutoff = \"2026-01-31\"",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-bug",
+    "kind": "error",
+    "grade": "right",
+    "answer": "test_optional_issuer failed with KeyError 'issuer_override' because TOML has no null, so the key was dropped",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-fix",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "The loader sets each key in OPTIONAL_KEYS to None when absent",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/current",
+    "kind": "state",
+    "grade": "right",
+    "answer": "search",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/anchor",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "It uses a YAML anchor (&default_analyzer) shared by two indexes; TOML has no anchors, so the analyzer block will be written out under each index with a comment",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/remaining",
+    "kind": "state",
+    "grade": "right",
+    "answer": "shipping, webhooks",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/done-list",
+    "kind": "state",
+    "grade": "right",
+    "answer": "billing, catalog, exports, gateway, identity, notifications, reporting",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/final-report",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "inventory (no tests, YAML kept) and pricing (skipped, vendored loader)",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/loader",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "tomllib",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/vendored",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "services/pricing/VENDORED.md; changes go through the platform team (#platform-config)",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "tests/test_schedule.py::test_cutoff_is_string",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-test",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "tests/test_sso.py::test_optional_issuer",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/total",
+    "kind": "value",
+    "grade": "right",
+    "answer": "12",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/ticket",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/toml-writer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/owner",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   }
+  ],
+  "empty": [
+   {
+    "id": "incident/goal",
+    "kind": "goal",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/no-brokers",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/approval",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/no-rollback",
+    "kind": "rejected",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/versions",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/first-fix",
+    "kind": "error",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/real-fix",
+    "kind": "decision",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/page",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/peak",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/durability",
+    "kind": "decision",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/branch",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/handle",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/channel",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/todo",
+    "kind": "state",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/commit",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/revision",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/pods",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/drain-rate",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/helm-flags",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/early-lag",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/lead-name",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/postmortem-date",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "incident/dashboard",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/test",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/cause",
+    "kind": "decision",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/assertion",
+    "kind": "error",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/legacy",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/mock",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/rejected",
+    "kind": "rejected",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/migration",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/concurrently",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/backoff",
+    "kind": "superseded",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/unrelated",
+    "kind": "state",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/todo",
+    "kind": "state",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/branch",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/ci-flag",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/commit-style",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/index-name",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/verified",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/suite",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/backoff-test",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/reviewer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/deadline",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "flaky-test/pr-number",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/goal",
+    "kind": "goal",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/no-ask",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/values",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/delete-rule",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/blocked",
+    "kind": "state",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/notests",
+    "kind": "state",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-bug",
+    "kind": "error",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-bug",
+    "kind": "error",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-fix",
+    "kind": "decision",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/current",
+    "kind": "state",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/anchor",
+    "kind": "decision",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/remaining",
+    "kind": "state",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/done-list",
+    "kind": "state",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/final-report",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/loader",
+    "kind": "decision",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/vendored",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/exports-test",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/identity-test",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/total",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/ticket",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/toml-writer",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "migration/owner",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   }
+  ]
+ },
+ "long-held-out": {
+  "full": [
+   {
+    "id": "sales-analysis/goal",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "Which region grew the most quarter over quarter, and whether the Q4 dip is real",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/test-accounts",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Accounts whose id starts with acc_test",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/fiscal",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "February",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/january",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Left out, because it belongs to the previous fiscal year",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/top-growth",
+    "kind": "value",
+    "grade": "right",
+    "answer": "South, +20.0%, from Q1 to Q2 (per month)",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/dip",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Mostly no: per month, four regions are flat or slightly up in Q4; only east falls, so the dip is real only in east",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/east-drop",
+    "kind": "value",
+    "grade": "right",
+    "answer": "2.7%",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/normalise",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Revenue is normalised to revenue per month within each quarter",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/format",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Rounded to thousands of EUR, written like 1,234k",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/three-accounts",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "acc_7be1c, acc_02f9a and acc_d41e7",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/share",
+    "kind": "value",
+    "grade": "right",
+    "answer": "41.2%",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/explanation",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "They moved to annual invoicing in November, so their orders no longer show monthly",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/memo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "A short memo in reports/q4-dip.md",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/no-charts",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "No, because readers use a text-only mail client",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/rows",
+    "kind": "value",
+    "grade": "right",
+    "answer": "184,212 orders",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/removed",
+    "kind": "value",
+    "grade": "right",
+    "answer": "7,311 orders across 4 test accounts",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/second",
+    "kind": "value",
+    "grade": "right",
+    "answer": "East, +17.2% (Q2 to Q3)",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/east-monthly",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Q3 6,292k; Q4 6,120k (per month)",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/accounts-down",
+    "kind": "value",
+    "grade": "right",
+    "answer": "902 of 1,811",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/recipient",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/memo-deadline",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/revenue-2024",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/noun",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "\"workspace\"; never \"project\" or \"repo\"",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/spelling",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "British spelling",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/banned",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "\"simply\", \"just\" and \"easy\"",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/headings",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Sentence case",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/shell-label",
+    "kind": "superseded",
+    "grade": "right",
+    "answer": "Label the block \"bash / PowerShell\" instead of adding a prose sentence",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/voice",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Second person, present tense",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/requirements",
+    "kind": "value",
+    "grade": "right",
+    "answer": "macOS 13 or later, Windows 11, or Linux with glibc 2.31 or later",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/heading-fix",
+    "kind": "superseded",
+    "grade": "right",
+    "answer": "Connecting your code host",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/diff",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "A diff summary for each file, not the whole file",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/themes",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Cut completely; the user will move it to the customisation guide themselves",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/sync",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Sync is one-way, from the workspace to the cloud, never back",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/word-limit",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Under 300 words",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/audience",
+    "kind": "goal",
+    "grade": "right",
+    "answer": "People who have never used a terminal-based tool before",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/next",
+    "kind": "state",
+    "grade": "right",
+    "answer": "troubleshooting.md",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/version",
+    "kind": "value",
+    "grade": "right",
+    "answer": "tool 4.2.0",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/powershell",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "irm https://get.example.dev/install.ps1 | iex",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/concepts-words",
+    "kind": "value",
+    "grade": "right",
+    "answer": "71 words",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/contents",
+    "kind": "value",
+    "grade": "right",
+    "answer": "tool.toml (settings), src/ (your code) and .tool/ (generated files)",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/requirements-link",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "The link is dropped for now",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/languages",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/publish-date",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/guide-file",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/algorithm",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "Token bucket",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/why",
+    "kind": "decision",
+    "grade": "right",
+    "answer": "A sliding window cannot express allowing a burst of twice the per-minute rate while the average holds, which enterprise nightly jobs need",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/rejected",
+    "kind": "rejected",
+    "grade": "right",
+    "answer": "A sliding-window counter (two weighted fixed windows)",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/team-limit",
+    "kind": "superseded",
+    "grade": "right",
+    "answer": "300 per minute",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/burst",
+    "kind": "value",
+    "grade": "right",
+    "answer": "Twice the per-minute rate",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/fail-open",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Requests go through (fail open)",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/timeout",
+    "kind": "superseded",
+    "grade": "right",
+    "answer": "15 ms",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/flag",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "RATE_LIMIT_ENABLED, default false (off)",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/envelope",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "rate_limited",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/test-bug",
+    "kind": "error",
+    "grade": "right",
+    "answer": "The test helper captured the time before the fake timers advanced; the Lua script takes the clock from the caller, so the fix was to inject now()",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/rollout",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "ap-south first, then eu-west, then us-east last",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/todo",
+    "kind": "state",
+    "grade": "right",
+    "answer": "Writing the rollout doc docs/rollout/rate-limiting.md, with the rollback step",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/follow-up",
+    "kind": "state",
+    "grade": "right",
+    "answer": "A dashboard panel for the rate_limit.fail_open metric",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/infra",
+    "kind": "instruction",
+    "grade": "right",
+    "answer": "Redis 7 (already used for sessions)",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/key",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "rl:",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/expiry",
+    "kind": "value",
+    "grade": "right",
+    "answer": "120000 ms (120 seconds)",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/tests-total",
+    "kind": "value",
+    "grade": "right",
+    "answer": "96 tests",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/metric",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "rate_limit.fail_open",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/file",
+    "kind": "identifier",
+    "grade": "right",
+    "answer": "Middleware in gateway/src/middleware/rateLimit.ts; Lua script in gateway/src/middleware/tokenBucket.lua",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/startup-plan",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/redis-host",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/launch-date",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   }
+  ],
+  "empty": [
+   {
+    "id": "sales-analysis/goal",
+    "kind": "goal",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/test-accounts",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/fiscal",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/january",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/top-growth",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/dip",
+    "kind": "decision",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/east-drop",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/normalise",
+    "kind": "decision",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/format",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/three-accounts",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/share",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/explanation",
+    "kind": "decision",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/memo",
+    "kind": "state",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/no-charts",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/rows",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/removed",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/second",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/east-monthly",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/accounts-down",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/recipient",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/memo-deadline",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "sales-analysis/revenue-2024",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/noun",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/spelling",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/banned",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/headings",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/shell-label",
+    "kind": "superseded",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/voice",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/requirements",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/heading-fix",
+    "kind": "superseded",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/diff",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/themes",
+    "kind": "decision",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/sync",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/word-limit",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/audience",
+    "kind": "goal",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/next",
+    "kind": "state",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/version",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/powershell",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/concepts-words",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/contents",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/requirements-link",
+    "kind": "decision",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/languages",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/publish-date",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "docs-rewrite/guide-file",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/algorithm",
+    "kind": "decision",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/why",
+    "kind": "decision",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/rejected",
+    "kind": "rejected",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/team-limit",
+    "kind": "superseded",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/burst",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/fail-open",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/timeout",
+    "kind": "superseded",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/flag",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/envelope",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/test-bug",
+    "kind": "error",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/rollout",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/todo",
+    "kind": "state",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/follow-up",
+    "kind": "state",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/infra",
+    "kind": "instruction",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/key",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/expiry",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/tests-total",
+    "kind": "value",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/metric",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/file",
+    "kind": "identifier",
+    "grade": "unknown",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/startup-plan",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/redis-host",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   },
+   {
+    "id": "rate-limiter/launch-date",
+    "kind": "never-stated",
+    "grade": "right",
+    "answer": "UNKNOWN",
+    "isQuoted": false
+   }
+  ]
+ }
+}

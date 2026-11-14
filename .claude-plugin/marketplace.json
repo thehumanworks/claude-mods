@@ -8,6 +8,11 @@
       "name": "turn-stats",
       "source": "./turn-stats",
       "description": "Per-turn usage stats under the last message: tok/s, input/output tokens, cache hit %, total and duration"
+    },
+    {
+      "name": "async-compaction",
+      "source": "./async-compaction",
+      "description": "Background compaction: a cheap model summarizes the conversation ahead of time, and at the compaction limit the summary is swapped in with the latest messages kept raw"
     }
   ]
 }

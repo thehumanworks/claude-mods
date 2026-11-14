@@ -1,0 +1,322 @@
+[
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 0,
+  "words": 795,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 1,
+  "words": 986,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 2,
+  "words": 690,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 3,
+  "words": 850,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 4,
+  "words": 731,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 5,
+  "words": 862,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 6,
+  "words": 601,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 7,
+  "words": 578,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 8,
+  "words": 1049,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 9,
+  "words": 911,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 10,
+  "words": 882,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 11,
+  "words": 781,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 12,
+  "words": 972,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 13,
+  "words": 820,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 14,
+  "words": 910,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 15,
+  "words": 896,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 16,
+  "words": 583,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 17,
+  "words": 867,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 18,
+  "words": 913,
+  "rejected": 0
+ },
+ {
+  "variant": "baseline",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 19,
+  "words": 822,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 0,
+  "words": 710,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 1,
+  "words": 726,
+  "rejected": 1
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 2,
+  "words": 531,
+  "rejected": 1
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 3,
+  "words": 763,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 4,
+  "words": 787,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 5,
+  "words": 662,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 6,
+  "words": 715,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 7,
+  "words": 669,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 8,
+  "words": 697,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 9,
+  "words": 638,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 10,
+  "words": 559,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 11,
+  "words": 966,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 12,
+  "words": 682,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 13,
+  "words": 768,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 14,
+  "words": 1064,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 15,
+  "words": 679,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 16,
+  "words": 721,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 17,
+  "words": 764,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 18,
+  "words": 659,
+  "rejected": 0
+ },
+ {
+  "variant": "combined",
+  "fixture": "long-held-out",
+  "level": "aggressive",
+  "rep": 19,
+  "words": 687,
+  "rejected": 0
+ }
+]

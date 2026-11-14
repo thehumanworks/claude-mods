@@ -1,1 +1,1 @@
-{ "name": "turn-stats", "version": "0.5.0", "description": "Per-turn usage stats under the last message: tok/s, input/output tokens, cache hit %, total and duration" }
+{ "name": "turn-stats", "version": "0.6.0", "description": "Per-turn usage stats under the last message: tok/s, input/output tokens, cache hit %, total and duration" }

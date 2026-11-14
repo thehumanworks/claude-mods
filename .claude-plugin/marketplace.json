@@ -1,11 +1,13 @@
 {
   "name": "claude-mods",
-  "owner": { "name": "thehumanworks" },
+  "owner": {
+    "name": "thehumanworks"
+  },
   "plugins": [
     {
-      "name": "tok-speedo",
-      "source": "./tok-speedo",
-      "description": "A tokens-per-second speedometer on the status line, with a running average and trend"
+      "name": "turn-stats",
+      "source": "./turn-stats",
+      "description": "Per-turn usage stats under the last message: tok/s, input/output tokens, cache hit %, total and duration"
     }
   ]
 }

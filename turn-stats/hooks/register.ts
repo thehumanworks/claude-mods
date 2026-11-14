@@ -1,10 +1,8 @@
 import type { EngineInterface, Register } from 'claude-code'
 
-import { empty, line, record, report, type Stats } from './speedo'
+import { empty, record, report, summary, type Stats } from './stats'
 
 const KEY = 'stats-v1'
-const LAST = 'last-reading-v1'
-const OLD_LAST = 'last-line'
 // Too little output gives a noisy rate (tokens arrive in bursts).
 const MIN_TOKENS = 20
 const MIN_MS = 250
@@ -18,37 +16,16 @@ async function load($: EngineInterface): Promise<Stats> {
 
 export const register: Register = on => {
   // Generation time and output tokens per main-loop turn, summed over its steps.
-  // Stats are kept per model (the id each response reports), since a
-  // bigger model is naturally slower than a smaller one.
   const turns = new Map<string, Acc>()
-  let currentLine: string | undefined
-
-  on('ui.render', { component: 'PromptHint' }, ($, e, next) => {
-    if (!currentLine) return next(e)
-    const { Text } = $.ui.resolve(e)
-    return Text({ color: 'claude', children: currentLine })
-  })
 
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'tps',
-      description: 'Token speed stats (/tps reset clears the averages)',
+      description: 'Token speed averages per model (/tps reset clears them)',
       argumentHint: '[reset]',
     })
-    // Redraw from the saved reading so the line always uses the current code.
-    await $.store.delete(OLD_LAST)
-    let last = (await $.store.get(LAST)) as { model: string; rate: number } | undefined
-    if (!last) {
-      // No saved reading yet: fall back to the most-measured model's last turn.
-      const stats = await load($)
-      const [model, s] =
-        Object.entries(stats.byModel).sort((x, y) => y[1].n - x[1].n)[0] ?? []
-      const rate = s?.recent.at(-1)
-      last = model && rate !== undefined ? { model, rate } : undefined
-    }
-    currentLine = last ? line(last.model, last.rate) : undefined
+    // Clear anything an earlier version left on the status line.
     $.ui.status(undefined)
-    $.ui.invalidate('ui.render')
     return next(e)
   })
 
@@ -84,34 +61,30 @@ export const register: Register = on => {
     return result
   })
 
+  // Returning a different `text` draws it beneath the turn's answer.
   on('turn.complete', async ($, e, next) => {
     const out = await next(e)
     if (e.agentId !== undefined) return out
     const acc = turns.get(e.turnId)
     turns.delete(e.turnId)
-    if (!acc || e.isAborted || acc.tokens < MIN_TOKENS || acc.ms < MIN_MS) return out
+    const usage = out.usage ?? e.usage
+    if (!usage) return out
 
-    const rate = acc.tokens / (acc.ms / 1000)
-    const stats = await load($)
-    const s = record(stats.byModel[acc.model] ?? empty(), rate)
-    stats.byModel[acc.model] = s
-    currentLine = line(acc.model, rate)
-    $.ui.invalidate('ui.render')
-    await $.store.set(KEY, stats)
-    await $.store.set(LAST, { model: acc.model, rate })
-    return out
+    const measured = acc && acc.tokens >= MIN_TOKENS && acc.ms >= MIN_MS
+    const rate = measured ? acc.tokens / (acc.ms / 1000) : undefined
+    if (rate !== undefined && acc && !e.isAborted) {
+      const stats = await load($)
+      stats.byModel[acc.model] = record(stats.byModel[acc.model] ?? empty(), rate)
+      await $.store.set(KEY, stats)
+    }
+    return { ...out, text: summary(rate, usage, e.durationMs) }
   })
 
   on('command.run', { command: 'tps' }, async ($, e) => {
     if (e.args.trim() === 'reset') {
       await $.store.delete(KEY)
-      await $.store.delete(LAST)
-      currentLine = undefined
-      $.ui.status(undefined)
-      $.ui.invalidate('ui.render')
       return { text: 'Token speed averages cleared.' }
     }
-    const stats = await load($)
-    return { text: report(stats) }
+    return { text: report(await load($)) }
   })
 }

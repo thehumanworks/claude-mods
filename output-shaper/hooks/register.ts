@@ -6,15 +6,17 @@ import type { EngineInterface, Register, ToolCallResult } from 'claude-code'
 import {
   DEFAULT_SAVE_DIR,
   errorNote,
+  EXCERPT_BUDGET_MAX,
   excerpt,
   fileNameFor,
   isAbsolute,
+  isSessionToolResult,
   joinPath,
   keepStderr,
   linesOf,
   render,
   resolveConfig,
-  savedPathIn,
+  savedPathInError,
   type Config,
   type Whole,
 } from './shape.js'
@@ -91,14 +93,13 @@ async function shapeAnswer($: $, rt: Runtime, toolUseId: string, ran: ToolCallRe
     whole = { path, lines: lines.length, size: stdout.length, unit: 'characters' }
   }
 
-  const shaped = render(excerpt(lines, config.headLines, config.tailLines, config.threshold), whole)
+  const shaped = render(excerpt(lines, config.headLines, config.tailLines, budgetOf(config)), whole)
   const next: BashRecord = { ...record, stdout: shaped, stderr: keepStderr(stderr, config.tailLines) }
   for (const field of PREVIEW_FIELDS) delete next[field]
   // A hook's own `{ result }`: Claude Code maps it for the model with Bash's own mapper, notes included.
   return {
     result: next as unknown as ToolCallResult<'Bash'>['result'] & object,
     ...(ran.context !== undefined && { context: ran.context }),
-    ...(ran.isReadOnly === true && { isReadOnly: true as const }),
   } as ToolCallResult<'Bash'>
 }
 
@@ -106,14 +107,29 @@ async function shapeAnswer($: $, rt: Runtime, toolUseId: string, ran: ToolCallRe
  * An error result stays whole (the exit code and the end of the output are in
  * it). When Claude Code saved the output and shows only its start, the last
  * lines are added as context.
+ *
+ * The path comes from the result's text, which holds the command's own output,
+ * so it is trusted only in Claude Code's place and format, and only for a file
+ * in this session's tool-results folder (where it lands too, links followed):
+ * anything else would let a command's output have the mod read any file.
  */
 async function noteOnError($: $, rt: Runtime, ran: ToolCallResult<'Bash'>): Promise<ToolCallResult<'Bash'>> {
   const text = typeof ran.text === 'string' ? ran.text : typeof ran.result === 'string' ? ran.result : ''
-  const saved = savedPathIn(text)
+  const saved = savedPathInError(text)
   if (saved === undefined) return ran
-  const read = await readSaved($, saved, rt.config)
+  const sessionId = await $.session.id()
+  if (!isSessionToolResult(saved, sessionId)) {
+    debug($, `not read: ${saved} is not in this session's tool-results folder`)
+    return ran
+  }
+  const stat = await $.fs.stat(saved, { resolve: true }).catch(() => undefined)
+  if (stat === undefined || stat.kind !== 'file' || stat.isLink || stat.realPath === undefined || !isSessionToolResult(stat.realPath, sessionId)) {
+    debug($, `not read: ${saved} is not a plain file in this session's tool-results folder`)
+    return ran
+  }
+  const read = await readSaved($, stat.realPath, rt.config)
   if (read === undefined) return ran
-  const ex = excerpt(read.lines, 0, rt.config.tailLines, rt.config.threshold)
+  const ex = excerpt(read.lines, 0, rt.config.tailLines, budgetOf(rt.config))
   return { ...ran, context: [...(ran.context ?? []), errorNote(ex, read.whole)] } as ToolCallResult<'Bash'>
 }
 
@@ -136,9 +152,9 @@ async function readSaved($: $, path: string, config: Config): Promise<{ lines: s
       if (r.exitCode !== 0) throw new Error(`${argv[0]} exited ${r.exitCode}`)
       return r.stdout
     }
-    const count = Number.parseInt((await run(['wc', '-l', path])).trim(), 10)
-    const head = linesOf(await run(['head', '-n', String(config.headLines), path]))
-    const tail = linesOf(await run(['tail', '-n', String(config.tailLines), path]))
+    const count = Number.parseInt((await run(['wc', '-l', '--', path])).trim(), 10)
+    const head = linesOf(await run(['head', '-n', String(config.headLines), '--', path]))
+    const tail = linesOf(await run(['tail', '-n', String(config.tailLines), '--', path]))
     if (!Number.isFinite(count)) return undefined
     // Lines the middle stands for, so the excerpt counts and numbers them right.
     const middle = Math.max(0, count - head.length - tail.length)
@@ -150,18 +166,28 @@ async function readSaved($: $, path: string, config: Config): Promise<{ lines: s
   }
 }
 
-/** Where this call's output is saved; the folder is kept out of git. */
+/**
+ * Where this call's output is saved. The default folder holds one folder per
+ * session and is kept out of git by a `.gitignore` of its own; a folder the
+ * person chose is used as it is, and nothing else is written in it.
+ */
 async function savePath($: $, rt: Runtime, toolUseId: string): Promise<string> {
   if (rt.dir === undefined) {
     const root = await $.session.root()
-    const dir = rt.config.saveDir === '' ? DEFAULT_SAVE_DIR : rt.config.saveDir
-    const abs = isAbsolute(dir) ? dir : joinPath(root, dir.replace(/^\.[\\/]/, ''))
-    const ignore = joinPath(abs, '.gitignore')
-    if (!(await $.fs.exists(ignore))) await $.fs.write(ignore, '*\n')
-    rt.dir = abs
+    const toAbs = (dir: string) => (isAbsolute(dir) ? dir : dir === '.' ? root : joinPath(root, dir.replace(/^\.[\\/]/, '')))
+    if (rt.config.saveDir === '') {
+      const base = toAbs(DEFAULT_SAVE_DIR)
+      const ignore = joinPath(base, '.gitignore')
+      if (!(await $.fs.exists(ignore))) await $.fs.write(ignore, '*\n')
+      const session = (await $.session.id()).replace(/[^A-Za-z0-9_-]/g, '_') || 'session'
+      rt.dir = joinPath(base, session)
+    } else rt.dir = toAbs(rt.config.saveDir)
   }
   return joinPath(rt.dir, fileNameFor(toolUseId))
 }
+
+/** The most the kept lines may take: the threshold, held under Claude Code's own inline limit. */
+const budgetOf = (config: Config): number => Math.min(config.threshold, EXCERPT_BUDGET_MAX)
 
 function debug($: $, message: string): void {
   try {

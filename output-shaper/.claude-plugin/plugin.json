@@ -8,7 +8,7 @@
       "type": "number",
       "title": "Shape output over (characters)",
       "description": "A command's output longer than this reaches Claude as its first and last lines plus the path of the whole output. Output Claude Code already saved to a file (over 30000 characters by default) is always shaped. 2000 to 200000.",
-      "default": 12000,
+      "default": 20000,
       "min": 2000,
       "max": 200000
     },

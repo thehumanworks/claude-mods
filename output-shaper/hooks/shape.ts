@@ -10,10 +10,15 @@ export type Config = {
   saveDir: string
 }
 
-export const DEFAULTS: Config = { threshold: 12_000, headLines: 40, tailLines: 60, saveDir: '' }
+export const DEFAULTS: Config = { threshold: 20_000, headLines: 40, tailLines: 60, saveDir: '' }
 export const DEFAULT_SAVE_DIR = '.claude/output-shaper'
 /** A kept line longer than this is cut. */
 export const MAX_LINE_CHARS = 500
+/**
+ * The most the kept lines take, whatever the threshold: Claude Code's own inline
+ * limit is 30,000 characters by default, and markers and stderr come on top.
+ */
+export const EXCERPT_BUDGET_MAX = 24_000
 /** stderr shorter than this stays whole beside shaped stdout. */
 export const STDERR_WHOLE_CHARS = 2_000
 
@@ -137,11 +142,39 @@ export function errorNote(ex: Excerpt, whole: Whole): string {
   ].join('\n')
 }
 
-/** The file Claude Code names in its own notice for output too large to show (`<persisted-output>`). */
-export function savedPathIn(text: string): string | undefined {
-  if (!text.includes('<persisted-output>')) return undefined
-  const m = /(?:Full output saved to|were saved to): (.+)/.exec(text)
-  return m?.[1]?.trim() || undefined
+const NOTICE = [
+  /^Output too large \([^()]+\)\. Full output saved to: (.+)$/,
+  /^Output exceeded the [^;]+ persist limit; only the first [^;]+ were saved to: (.+)$/,
+]
+
+/**
+ * The file Claude Code names in an error result when it saved the output: its
+ * notice comes right after the `Exit code N` line, before any of the command's
+ * own output. Elsewhere in the text the same words are the command's, and not
+ * trusted. A command whose output opens with them still gets past this, so the
+ * path must also pass `isSessionToolResult`.
+ */
+export function savedPathInError(text: string): string | undefined {
+  const lines = text.split('\n')
+  if (!/^Exit code -?\d+$/.test(lines[0] ?? '')) return undefined
+  const at = lines[1] === '<persisted-output>' ? 2 : 1
+  for (const re of NOTICE) {
+    const m = re.exec(lines[at] ?? '')
+    if (m?.[1] !== undefined && m[1].trim() !== '') return m[1].trim()
+  }
+  return undefined
+}
+
+/**
+ * Whether a path is a file in this session's own tool-results folder, where
+ * Claude Code saves output: `<config>/projects/<project>/<session id>/tool-results/<name>`,
+ * with no `.` or `..` segment.
+ */
+export function isSessionToolResult(path: string, sessionId: string): boolean {
+  if (sessionId === '' || !/^[A-Za-z0-9_-]+$/.test(sessionId)) return false
+  const p = path.replace(/\\/g, '/')
+  if (!isAbsolute(p) || p.split('/').some(seg => seg === '.' || seg === '..')) return false
+  return new RegExp(`/projects/[^/]+/${sessionId}/tool-results/[^/]+$`).test(p)
 }
 
 /** A file name from a tool_use_id: letters, digits, `_` and `-` only. */

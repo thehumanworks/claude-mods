@@ -43,7 +43,7 @@ Found in the API's types and in what the tool sends the model:
 | Output up to the inline limit | All of it. The limit is the `bashOutputMaxChars` setting: 30,000 characters by default, 4,000 to 128,000. |
 | Output over the limit | Claude Code saves the whole output to the session's `tool-results` folder. The Bash record carries `persistedOutputPath` and `persistedOutputSize` (bytes). The model sees `<persisted-output>Output too large (…). Full output saved to: <path>` and a preview of the first 2 KB. Sometimes (`stdoutHoldsOutputEnd`) the preview is a start and an end of about 1.5 KB. There are no line counts. |
 | Output over 64 MiB | Only the first 64 MiB are saved, and the notice says so. |
-| A command that fails (non-zero exit) | An error result: `Exit code N`, then the output. Past about 10,000 characters it is cut to its first and last 5,000, with `... [N characters truncated] ...` between. If the output went over the inline limit, the error holds the same saved-file notice and 2 KB preview. |
+| A command that fails (non-zero exit) | An error result: `Exit code N`, then the output. Past about 10,000 characters it is cut to its first and last 5,000, with `... [N characters truncated] ...` between. Output over the inline limit is first cut to that limit, and no file is saved. So for a failing command with 49,000 characters of output (exit 3), Claude got `Exit code 3`, the first 5,000 characters, `... [20012 characters truncated] ...`, and the last 5,000 characters of the first 30,000. The real end of the output, where the failure usually is, was lost, and no saved-file notice or tool-results file was made. Claude Code saves a failing command's output only when its feature flag `tengu_parallel_sunrise` is on (it is off by default), and never for a `!` command you type. |
 
 So Claude Code already saves big outputs. This mod builds on that and does not save them a second time:
 
@@ -61,7 +61,7 @@ So Claude Code already saves big outputs. This mod builds on that and does not s
 | Long lines | A kept line over 500 characters is cut, and says how much is left out. |
 | Where the output goes | Claude Code's own file when there is one. Otherwise `.claude/output-shaper/<session id>/<tool_use_id>.txt`, or `<saveDir>/<tool_use_id>.txt` when you set a folder. Only the default `.claude/output-shaper` folder gets a `.gitignore` holding `*`, so git ignores it. |
 | Saved files over 4 MiB | The mod cannot read them in one go, so it runs `wc`, `head` and `tail` on them. The size is then given in bytes. If those cannot run, Claude gets what Claude Code sent. |
-| Errors | An error result is never cut or rewritten. The exit code, the output and Claude Code's own cut stay as they are. If Claude Code saved the output (its preview only shows the start), the mod adds the last lines and the path as context right after the result. |
+| Errors | An error result is never cut or rewritten. The exit code, the output and Claude Code's own cut stay as they are. If Claude Code saved the output (its preview only shows the start), the mod adds the last lines and the path as context right after the result. That happens only when Claude Code saves a failing command's output, which needs its `tengu_parallel_sunrise` flag. The flag is off by default, and with Claude Code 2.1.325 this case was not seen in practice. Otherwise the error reaches Claude exactly as Claude Code made it. |
 | Which saved files it reads for an error | The path is taken from the error text, which also holds the command's own output, so it is trusted only when Claude Code's notice sits where Claude Code puts it (the line right after `Exit code N`), and only for a plain file in this session's own `projects/<project>/<session id>/tool-results/` folder, links followed. A command that prints a notice of its own gets nothing read. |
 | Left alone | Output under the threshold, backgrounded commands, images, results with structured content, and calls a hook refused. |
 | When something goes wrong | If the mod fails at any step, Claude gets the result Claude Code made, unchanged. |
@@ -86,7 +86,7 @@ Tests:       2 failed, 412 passed, 414 total
 - The mod writes into `.claude/` in your project. A file watcher (a dev server, a test runner in watch mode) that does not ignore that folder may see the writes.
 - When Claude Code cut its own file at 64 MiB, the counts cover only the part it saved.
 - An output Claude really wanted whole (`cat` of a file of 20,000 characters) is shaped too. Claude can Read the saved file, or the original file. Raise the threshold if this happens often.
-- An error under Claude Code's limit is passed as it is, already cut to 10,000 characters by Claude Code. Its first and last 5,000 characters are there, but the mod has no copy of the middle to save.
+- An error is passed as Claude Code made it: cut to its first and last 5,000 characters, and when the output went over the inline limit, cut at that limit first, so its real end is lost. The mod has no copy of the whole output to save. Since Claude Code does not normally save a failing command's output, the mod's error note does not normally fire.
 - Only Bash. PowerShell and other tools are not shaped.
 
 ## Development

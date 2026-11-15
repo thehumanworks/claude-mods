@@ -1,0 +1,36 @@
+{
+  "name": "test-gate",
+  "version": "0.1.0",
+  "description": "When Claude ends a turn after editing code without running a test or check, a small model decides whether it should, and if so the turn goes on once with a note asking Claude to run the tests or say why not",
+  "author": {
+    "name": "Tomas Roda"
+  },
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Test gate",
+      "description": "Off: turns end as they always do.",
+      "default": true
+    },
+    "model": {
+      "type": "string",
+      "title": "Model",
+      "description": "The model asked whether the edits need a test run: an alias or a full model id. Called through Claude Code, on the signed-in account.",
+      "default": "claude-haiku-5-5"
+    },
+    "timeoutSeconds": {
+      "type": "number",
+      "title": "Model timeout (seconds)",
+      "description": "The model call is given up after this long, and a code-only rule decides instead. 2 to 60.",
+      "default": 10,
+      "min": 2,
+      "max": 60
+    },
+    "testPatterns": {
+      "type": "string",
+      "title": "Test and check commands",
+      "description": "Bash commands that count as a test or check run, separated by commas. A command counts when it, or a part of it after && ; or |, starts with one of these. A package manager pattern (npm run lint) covers pnpm, yarn and bun too. Empty: the defaults.",
+      "default": "npm test, npm t, npm run check, npm run lint, npm run typecheck, npm run type-check, deno test, node --test, vitest, jest, mocha, playwright test, tsc, eslint, pytest, tox, nox, mypy, ruff check, unittest, cargo test, cargo check, cargo clippy, cargo nextest, go test, go vet, make test, make check, make lint, mvn test, mvn verify, gradle test, ./gradlew test, dotnet test, mix test, rspec, rake test, phpunit, swift test, claude plugin test, claude plugin validate"
+    }
+  }
+}

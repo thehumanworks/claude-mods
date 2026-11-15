@@ -33,6 +33,11 @@
       "name": "test-gate",
       "source": "./test-gate",
       "description": "When Claude ends a turn after editing code without running a test or check, claude-haiku-5-5 decides whether it should, and if so the turn goes on once with a note asking Claude to run the tests or say why not"
+    },
+    {
+      "name": "output-shaper",
+      "source": "./output-shaper",
+      "description": "When a Bash command prints a lot, Claude reads its first and last lines, the line and character counts, and the path of the whole output with a hint to Grep or Read it"
     }
   ]
 }

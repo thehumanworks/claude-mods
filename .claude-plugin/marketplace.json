@@ -13,6 +13,11 @@
       "name": "async-compaction",
       "source": "./async-compaction",
       "description": "Background compaction: a cheap model summarizes the conversation ahead of time, and at the compaction limit the summary is swapped in with the latest messages kept raw"
+    },
+    {
+      "name": "loop-breaker",
+      "source": "./loop-breaker",
+      "description": "Notices when Claude repeats the same failing tool call and tells it to stop retrying and change approach"
     }
   ]
 }

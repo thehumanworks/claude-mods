@@ -18,6 +18,11 @@
       "name": "loop-breaker",
       "source": "./loop-breaker",
       "description": "Notices when Claude repeats the same failing tool call and tells it to stop retrying and change approach"
+    },
+    {
+      "name": "context-gauge",
+      "source": "./context-gauge",
+      "description": "Context used against the auto-compact limit on the status line, and a short note to Claude when it passes 50, 75 and 90%"
     }
   ]
 }

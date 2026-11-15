@@ -1,0 +1,16 @@
+{
+  "name": "loop-breaker",
+  "version": "0.1.0",
+  "description": "Notices when Claude repeats the same failing tool call and tells it to stop retrying and change approach",
+  "author": { "name": "Tomas Roda" },
+  "userConfig": {
+    "threshold": {
+      "type": "number",
+      "title": "Failures before the note",
+      "description": "How many times in a row the same tool call may fail before Claude is told to change approach. 2 to 20.",
+      "default": 3,
+      "min": 2,
+      "max": 20
+    }
+  }
+}

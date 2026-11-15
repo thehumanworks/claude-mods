@@ -31,8 +31,11 @@ export function engine(on: On, answer: (n: number) => Answer = () => ({ exitCode
   })
   on('prompt.submit', (_, e) => {
     seen.promptContext.push(e.context)
+    // A prompt the engine does not let in (a Stop hook stands, say).
+    if (e.text === 'blocked') return { drop: 'blocked' }
     return { text: e.text, context: e.context }
   })
+  on('turn.complete', (_, e) => ({ text: e.answer }))
   on('ui.log', () => ({ value: undefined }) as never)
   on('ui.toast', (_, e) => {
     seen.toasts.push(JSON.stringify(e))
@@ -41,7 +44,8 @@ export function engine(on: On, answer: (n: number) => Answer = () => ({ exitCode
 
   /** One tool call of the main loop (or of a subagent), and what the model read after its result. */
   const call = async ($: Engine, input: Record<string, unknown>): Promise<readonly string[] | undefined> => {
-    const answered = (await $.tool.call(input as never)) as { context?: readonly string[] }
+    // The model's calls carry the id of their tool_use block.
+    const answered = (await $.tool.call({ tool_use_id: `toolu_${seen.toolContext.length + 1}`, ...input } as never)) as { context?: readonly string[] }
     seen.toolContext.push(answered.context)
     await clock.settle()
     return answered.context

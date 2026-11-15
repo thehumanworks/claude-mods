@@ -1,3 +1,4 @@
+import type { Register } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 import { blocksOf, clip, isWatched, judge, mentionTest, resolveConfig, splitGlobs } from '../hooks/check.js'
 import { DEBOUNCE_MS } from '../hooks/register.js'
@@ -152,6 +153,66 @@ test('a subagent edit counts, but only the main loop is handed the errors', { op
   await clock.advance(DEBOUNCE_MS)
   expect(await bash($, { agentId: 'a1' })).toBeUndefined()
   expect((await bash($))?.[0]).toContain('src/a.ts(1,5)')
+})
+
+/** A mod of its own that makes a tool call when a turn ends, as another plugin may, and shows what it read after it. */
+const caller: { name: string; register: Register } = {
+  name: 'caller',
+  register: on => {
+    on('turn.complete', async ($, e, next) => {
+      const answered = (await $.tool.call({ tool: 'Bash', command: 'ls', tool_use_id: 'toolu_plugin' } as never)) as { context?: unknown }
+      $.ui.toast(`caller read: ${JSON.stringify(answered.context ?? null)}`)
+      return next(e)
+    })
+  },
+}
+
+test('a tool call another plugin makes does not use up the report', { options: on, plugins: [caller] }, async ($, onHook) => {
+  const { seen, clock, edit, bash } = engine(onHook, () => ({ exitCode: 2, stdout: tsc(['src/a.ts', 1, 'bad']) }))
+  await edit($, '/repo/src/a.ts')
+  await clock.advance(DEBOUNCE_MS)
+  await $.turn.complete({ answer: 'ok', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as never)
+  await clock.settle()
+  expect(seen.toasts).toEqual([JSON.stringify({ text: 'caller read: null' })])
+  expect((await bash($))?.[0]).toContain('src/a.ts(1,5)')
+})
+
+test('a prompt that does not get in leaves the report for the next request', { options: on }, async ($, onHook) => {
+  const { clock, edit, prompt } = engine(onHook, () => ({ exitCode: 2, stdout: tsc(['src/a.ts', 1, 'bad']) }))
+  await edit($, '/repo/src/a.ts')
+  await clock.advance(DEBOUNCE_MS)
+  await prompt($, 'blocked')
+  expect((await prompt($))?.[0]).toContain('src/a.ts(1,5)')
+  expect(await prompt($)).toBeUndefined()
+})
+
+test('an error Claude was told of and left alone keeps the pass note for later, with no "cleared" note', { options: on }, async ($, onHook) => {
+  const aError = tsc(['src/a.ts', 3, 'bad'])
+  const answers = [
+    { exitCode: 2, stdout: aError },
+    // Claude edits only b.ts: the a.ts error is still there.
+    { exitCode: 2, stdout: aError },
+    { exitCode: 0 },
+  ]
+  const { clock, edit, bash } = engine(onHook, n => answers[n - 1]!)
+  const round = async (file: string) => {
+    await edit($, file)
+    await clock.advance(DEBOUNCE_MS)
+    return bash($)
+  }
+  expect((await round('/repo/src/a.ts'))?.[0]).toContain('src/a.ts(3,5)')
+  expect(await round('/repo/src/b.ts')).toBeUndefined()
+  expect(await round('/repo/src/a.ts')).toEqual(['edit-check: `npx tsc --noEmit -p .` passes again.'])
+})
+
+test('"cleared" is said only once none of the errors Claude was told of are left', async () => {
+  const told = judge({ command: 'tsc', exitCode: 2, output: tsc(['src/a.ts', 3, 'bad'], ['src/old.ts', 1, 'old']), cwd: CWD, touched: ['/repo/src/a.ts'], wasReported: false, maxChars: 4000 })
+  const reported = (told.outcome as { blocks: ReadonlySet<string> }).blocks
+  const base = { command: 'tsc', exitCode: 2, cwd: CWD, touched: ['/repo/src/b.ts'], previous: told.blocks, wasReported: true, reported, maxChars: 4000 }
+  expect(judge({ ...base, output: tsc(['src/a.ts', 3, 'bad'], ['src/old.ts', 1, 'old']) }).outcome.kind).toBe('silent')
+  const cleared = judge({ ...base, output: tsc(['src/old.ts', 1, 'old']) }).outcome
+  expect(cleared.kind).toBe('cleared')
+  expect((cleared as { text: string }).text).toContain('the errors you were told of are gone')
 })
 
 test('passing says nothing, and one short note follows a failure Claude was told of', { options: on }, async ($, onHook) => {

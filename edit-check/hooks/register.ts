@@ -26,6 +26,8 @@ type Runtime = {
   report?: Exclude<Outcome, { kind: 'silent' }>
   /** Claude was handed a failure, and not yet that it passes again. */
   failureDelivered: boolean
+  /** The blocks of the failure Claude was last handed. */
+  reported?: ReadonlySet<string>
   /** Toasts already shown, once a session each. */
   warned: Set<string>
 }
@@ -51,8 +53,10 @@ export const register: Register = (on, options) => {
         const path = typeof input.file_path === 'string' ? input.file_path : input.notebook_path
         if (typeof path === 'string' && path !== '') await edited($, rt, path)
       }
-      // A subagent's edits count, but what the check finds is the main loop's to read.
-      if (e.agentId === undefined && rt.report !== undefined) {
+      // A subagent's or a plugin's edits count, but what the check finds is for a call of the model's in the
+      // main loop: a plugin's own `$.tool.call` carries a tool_use_id too, so the origin decides.
+      const isModelCall = next.origin.plugin === 'engine' && typeof e.tool_use_id === 'string' && e.tool_use_id !== ''
+      if (isModelCall && e.agentId === undefined && rt.report !== undefined) {
         return { ...result, context: [...(result.context ?? []), take(rt)] } as typeof result
       }
     } catch (err) {
@@ -62,9 +66,13 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   // A check that finished after Claude's last tool call reaches it with the next prompt.
-  on('prompt.submit', ($, e, next) => {
-    if (rt.report === undefined || e.command !== undefined) return next(e)
-    return next({ ...e, context: [...(e.context ?? []), take(rt)] })
+  on('prompt.submit', async ($, e, next) => {
+    const report = rt.report
+    if (report === undefined || e.command !== undefined) return next(e)
+    const submitted = await next({ ...e, context: [...(e.context ?? []), report.text] })
+    // A dropped prompt carried nothing: the report waits for the next request.
+    if (submitted.drop === undefined) delivered(rt, report)
+    return submitted
   }).catch(($, e, next) => next(e))
 }
 
@@ -82,7 +90,7 @@ function schedule($: $, rt: Runtime): void {
   rt.timer?.cancel()
   rt.timer = $.clock.after(DEBOUNCE_MS, () => {
     rt.timer = undefined
-    void check($, rt)
+    void check($, rt).catch(() => undefined)
   })
 }
 
@@ -116,6 +124,7 @@ async function check($: $, rt: Runtime): Promise<void> {
       touched,
       previous: rt.previous,
       wasReported: rt.failureDelivered,
+      reported: rt.reported,
       maxChars,
     })
     rt.previous = blocks
@@ -158,9 +167,15 @@ async function runCommand($: $, rt: Runtime): Promise<Ran | 'timeout'> {
 /** The report for Claude, handed over once. */
 function take(rt: Runtime): string {
   const report = rt.report!
-  rt.report = undefined
-  rt.failureDelivered = report.kind === 'errors'
+  delivered(rt, report)
   return report.text
+}
+
+/** Notes what Claude was handed; a newer report that took its place meanwhile still waits. */
+function delivered(rt: Runtime, report: NonNullable<Runtime['report']>): void {
+  if (rt.report === report) rt.report = undefined
+  rt.failureDelivered = report.kind === 'errors'
+  rt.reported = report.kind === 'errors' ? report.blocks : undefined
 }
 
 function warnOnce($: $, rt: Runtime, key: string, text: string): void {

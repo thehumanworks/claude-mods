@@ -163,11 +163,11 @@ const keyOf = (block: readonly string[]) => block.map(l => l.trim()).join('\n')
 export type Outcome =
   /** Nothing to tell Claude. */
   | { kind: 'silent' }
-  /** Errors to hand over. */
-  | { kind: 'errors'; text: string }
+  /** Errors to hand over, and the keys of the blocks they come from. */
+  | { kind: 'errors'; text: string; blocks: ReadonlySet<string> }
   /** The check passes again after a failure Claude was told of. */
   | { kind: 'passes'; text: string }
-  /** The files Claude touched are clean again, but the check still fails, on errors it had before. */
+  /** The errors Claude was told of are gone, but the check still fails, on errors it had before. */
   | { kind: 'cleared'; text: string }
 
 export type Run = {
@@ -181,6 +181,8 @@ export type Run = {
   previous?: ReadonlySet<string>
   /** Claude was told of a failure, and not yet that it passes again. */
   wasReported: boolean
+  /** The keys of the blocks of the failure Claude was last told of. */
+  reported?: ReadonlySet<string>
   maxChars: number
 }
 
@@ -188,7 +190,8 @@ export type Run = {
  * What to tell Claude of one run, and the blocks to compare the next run with.
  *
  * A passing run says nothing, unless Claude was told of a failure: then one
- * short note. A failing run hands over the blocks that name a file touched
+ * short note. So does a failing run with nothing new, once none of the errors
+ * Claude was told of are left. A failing run hands over the blocks that name a file touched
  * since the run before; with none, the first lines of the blocks the run before
  * did not have (all of them on the first run), so errors met at every check
  * are not handed over again and again.
@@ -205,12 +208,14 @@ export function judge(run: Run): { outcome: Outcome; blocks: Set<string> } {
   const matched = all.filter(block => block.some(mentions))
   if (matched.length > 0) {
     const head = `edit-check: ${cmd} failed (exit code ${run.exitCode}) after your edits. Errors in the files you touched (${touched.join(', ')}):`
-    return { outcome: { kind: 'errors', text: `${head}\n${clip(matched.flat().join('\n'), run.maxChars)}` }, blocks }
+    return { outcome: { kind: 'errors', text: `${head}\n${clip(matched.flat().join('\n'), run.maxChars)}`, blocks: new Set(matched.map(keyOf)) }, blocks }
   }
   const fresh = run.previous === undefined ? all : all.filter(block => !run.previous!.has(keyOf(block)))
   if (fresh.length === 0) {
-    const outcome: Outcome = run.wasReported
-      ? { kind: 'cleared', text: `edit-check: no errors left in the files you touched; ${cmd} still fails (exit code ${run.exitCode}) on errors it had before.` }
+    // Errors Claude was told of and has not fixed (in a file it did not touch this time): nothing new to say.
+    const isLeft = [...(run.reported ?? [])].some(key => blocks.has(key))
+    const outcome: Outcome = run.wasReported && !isLeft
+      ? { kind: 'cleared', text: `edit-check: the errors you were told of are gone; ${cmd} still fails (exit code ${run.exitCode}), on errors it had before.` }
       : { kind: 'silent' }
     return { outcome, blocks }
   }
@@ -219,7 +224,7 @@ export function judge(run: Run): { outcome: Outcome; blocks: Set<string> } {
   const more = lines.length - shown.length
   const head = `edit-check: ${cmd} failed (exit code ${run.exitCode}) after your edits to ${touched.join(', ')}. No line names those files; its first lines:`
   const body = clip(shown.join('\n'), run.maxChars) + (more > 0 ? `\n[${more} more line${more === 1 ? '' : 's'}]` : '')
-  return { outcome: { kind: 'errors', text: `${head}\n${body}` }, blocks }
+  return { outcome: { kind: 'errors', text: `${head}\n${body}`, blocks: new Set(fresh.map(keyOf)) }, blocks }
 }
 
 /** Cuts the text to `max` characters, at a line end where one is near, and says how much is left out. */

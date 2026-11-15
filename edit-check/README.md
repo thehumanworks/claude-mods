@@ -16,6 +16,8 @@ Answer `y` to add the marketplace, then pick a scope. From a checkout, for one s
 
 The mod is off until you set a check command, on the screen the install shows or in `/config`.
 
+The command runs as you, with no permission prompt. If it goes through project files (an npm script, a Makefile, `build.rs`, a lint config, the tests), Claude's edits change what runs. The safer choice is a direct tool command, such as `npx tsc --noEmit -p .`.
+
 ## Settings
 
 | Setting | Default | What it does |
@@ -43,8 +45,9 @@ Some commands to start from:
 - **What Claude reads.** Only the error lines that name a file edited since the last check, with the command and its exit code. A line counts when it names the file by its path in the session's folder or its absolute path. Indented lines stay with the line above them, so an error keeps its notes (tsc, rustc) and a file heading keeps the errors listed under it (eslint).
 - **When no line names those files.** Claude reads the first 30 lines instead. Errors the last check also had are left out, so failures that were there before the edits are not handed over again at each check.
 - **When it reads it.** At its next request: after its next tool call, or with the next prompt when the turn has ended. Each result is handed over once. A newer result replaces one not yet handed over, so an error already fixed is never told.
-- **When the check passes.** Nothing is said. After a failure Claude was told of, one short note: `` edit-check: `<command>` passes again. `` If the check still fails, but only on errors it had before the edits, the note says that instead.
-- **Timeouts and commands that cannot start.** The check is stopped and nothing reaches Claude. You see one notice per session.
+- **When the check passes.** Nothing is said. After a failure Claude was told of, one short note: `` edit-check: `<command>` passes again. `` If the errors Claude was told of are all gone but the check still fails on errors it had before, the note says that instead. While any of those errors are still there, nothing more is said.
+- **Who reads it.** Only Claude's own tool calls in the main loop carry the report. A tool call made by another plugin does not use it up.
+- **Timeouts and commands that cannot start.** The check is stopped and nothing reaches Claude. You see one notice per session. Claude Code kills the shell it started. Its API does not say whether processes the shell started are killed too. To be safe, start the tool with `exec` (`exec npx tsc --noEmit -p .`), so the tool is the process that gets killed.
 
 ## Limits
 

@@ -1,0 +1,42 @@
+name: Validate mods
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      mods: ${{ steps.mods.outputs.mods }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: mods
+        run: |
+          mods=$(jq -c '[.plugins[].source]' .claude-plugin/marketplace.json)
+          echo "mods=$mods" >> "$GITHUB_OUTPUT"
+          echo "Mods: $mods"
+
+  check:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mod: ${{ fromJSON(needs.discover.outputs.mods) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code@2.1.325
+      - name: Validate ${{ matrix.mod }}
+        run: claude plugin validate "${{ matrix.mod }}"
+      - name: Test ${{ matrix.mod }}
+        run: claude plugin test "${{ matrix.mod }}"

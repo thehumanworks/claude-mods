@@ -28,6 +28,11 @@
       "name": "edit-check",
       "source": "./edit-check",
       "description": "After Claude edits files, runs the project's own check command in the background and hands Claude the new errors at its next request"
+    },
+    {
+      "name": "output-shaper",
+      "source": "./output-shaper",
+      "description": "When a Bash command prints a lot, Claude reads its first and last lines, the line and character counts, and the path of the whole output with a hint to Grep or Read it"
     }
   ]
 }

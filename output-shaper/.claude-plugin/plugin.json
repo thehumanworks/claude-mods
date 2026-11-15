@@ -1,0 +1,38 @@
+{
+  "name": "output-shaper",
+  "version": "0.1.0",
+  "description": "When a Bash command prints a lot, Claude reads its first and last lines, the line and character counts, and the path of the whole output with a hint to Grep or Read it",
+  "author": { "name": "Tomas Roda" },
+  "userConfig": {
+    "threshold": {
+      "type": "number",
+      "title": "Shape output over (characters)",
+      "description": "A command's output longer than this reaches Claude as its first and last lines plus the path of the whole output. Output Claude Code already saved to a file (over 30000 characters by default) is always shaped. 2000 to 200000.",
+      "default": 12000,
+      "min": 2000,
+      "max": 200000
+    },
+    "headLines": {
+      "type": "number",
+      "title": "Lines from the start",
+      "description": "How many of the first lines Claude reads. 0 to 500.",
+      "default": 40,
+      "min": 0,
+      "max": 500
+    },
+    "tailLines": {
+      "type": "number",
+      "title": "Lines from the end",
+      "description": "How many of the last lines Claude reads. Errors and summaries are usually there. 1 to 1000.",
+      "default": 60,
+      "min": 1,
+      "max": 1000
+    },
+    "saveDir": {
+      "type": "string",
+      "title": "Folder for saved output",
+      "description": "Where the whole output is saved when Claude Code did not save it already, absolute or relative to the session's folder. Empty: .claude/output-shaper in the session's folder, kept out of git by a .gitignore of its own.",
+      "default": ""
+    }
+  }
+}

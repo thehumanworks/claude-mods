@@ -9,6 +9,7 @@ Mods for Claude Code.
 | [loop-breaker](./loop-breaker) | Notices when Claude repeats the same failing tool call and tells it to stop retrying and change approach |
 | [context-gauge](./context-gauge) | Context used against the auto-compact limit on the status line, and a short note to Claude when it passes 50, 75 and 90% |
 | [edit-check](./edit-check) | After Claude edits files, runs the project's own check command in the background and hands Claude the new errors at its next request |
+| [output-shaper](./output-shaper) | When a Bash command prints a lot, Claude reads its first and last lines, the line and character counts, and the path of the whole output with a hint to Grep or Read it |
 
 ## Install
 

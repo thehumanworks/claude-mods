@@ -1,23 +1,24 @@
 import type { On, ToolCallResult } from 'claude-code'
 import { expect, test, type Engine } from 'claude-code/testing'
-import { keyOf, resolveThreshold, Tracker } from '../hooks/loops.js'
+import { isModelCall, keyOf, resolveThreshold, Tracker } from '../hooks/loops.js'
 
 /**
  * Stands in for Claude Code beneath the plugin. A Bash command fails, as core
  * reports a non-zero exit (`isError`, the text the model reads), when it holds
- * `fail`; `Read` fails on a path holding `missing`.
+ * `fail`; `ls` and `cat` succeed read-only. `Read` fails on a path holding
+ * `missing` and succeeds read-only on any other.
  */
 function engine(on: On) {
   const seen = { toasts: [] as string[] }
   on('tool.call', { tool: 'Bash' }, (_, e) =>
     (e.command.includes('fail')
       ? { isError: true, result: `Exit code 1\nerror: ${e.command} broke`, text: `Exit code 1\nerror: ${e.command} broke` }
-      : { result: { stdout: 'ok', stderr: '', interrupted: false }, text: 'ok' }) as never,
+      : { result: { stdout: 'ok', stderr: '', interrupted: false }, text: 'ok', ...(/^(ls|cat)\b/.test(e.command) && { isReadOnly: true }) }) as never,
   )
   on('tool.call', { tool: 'Read' }, (_, e) =>
     (e.file_path.includes('missing')
       ? { isError: true, result: 'File does not exist.', text: 'File does not exist.' }
-      : { result: { type: 'text', file: { filePath: e.file_path, content: 'x' } }, text: 'x' }) as never,
+      : { result: { type: 'text', file: { filePath: e.file_path, content: 'x' } }, text: 'x', isReadOnly: true }) as never,
   )
   on('ui.toast', (_, e) => {
     seen.toasts.push(e.text)
@@ -54,13 +55,13 @@ test('the note is not repeated for the same call until its count resets', async 
   for (let i = 0; i < 4; i++) expect(notes(await bash($, 'make fail'))).toEqual([])
   expect(seen.toasts.length).toBe(1)
 
-  await bash($, 'ls') // a success clears the count
+  await bash($, 'npm install') // a success that changes something clears the count
   for (let i = 0; i < 2; i++) expect(notes(await bash($, 'make fail'))).toEqual([])
   expect(notes(await bash($, 'make fail')).length).toBe(1)
   expect(seen.toasts.length).toBe(2)
 })
 
-test('a success in between resets the count', async ($, on) => {
+test('a success in between that is not read-only resets the count', async ($, on) => {
   const seen = engine(on)
   await bash($, 'cargo fail')
   await bash($, 'cargo fail')
@@ -69,6 +70,45 @@ test('a success in between resets the count', async ($, on) => {
   expect(notes(await bash($, 'cargo fail'))).toEqual([])
   expect(notes(await bash($, 'cargo fail')).length).toBe(1)
   expect(seen.toasts.length).toBe(1)
+})
+
+test('a read-only success in between does not reset the count', async ($, on) => {
+  const seen = engine(on)
+  await bash($, 'npm run fail')
+  await bash($, 'ls -la') // looks around
+  await $.tool.call({ tool: 'Read', file_path: '/src/index.ts' } as never)
+  await bash($, 'npm run fail')
+  const third = await bash($, 'npm run fail')
+  expect(notes(third).length).toBe(1)
+  expect(seen.toasts.length).toBe(1)
+})
+
+test('only calls the model made are counted', async () => {
+  // The engine raises the model's calls, with the model's id; a plugin's own `$.tool.call` is raised under its name.
+  expect(isModelCall({ plugin: 'engine' }, 'toolu_1')).toBe(true)
+  expect(isModelCall({ plugin: 'some-plugin' }, 'toolu_2')).toBe(false)
+  expect(isModelCall({ plugin: 'engine' }, undefined)).toBe(false)
+  expect(isModelCall({ plugin: 'engine' }, '')).toBe(false)
+})
+
+test('a context already on the result is kept, and the note comes after it', async ($, on) => {
+  on('tool.call', { tool: 'Bash' }, () => ({ isError: true, result: 'x', text: 'boom', context: ['other note'] }) as never)
+  let r: ToolCallResult | undefined
+  for (let i = 0; i < 3; i++) r = await bash($, 'x')
+  expect(r!.context!.length).toBe(2)
+  expect(r!.context![0]).toBe('other note')
+  expect(r!.context![1]).toContain('loop-breaker:')
+})
+
+test('a toast that throws still lets the note through', async ($, on) => {
+  on('tool.call', { tool: 'Bash' }, () => ({ isError: true, result: 'x', text: 'boom' }) as never)
+  on('ui.toast', () => {
+    throw new Error('nope')
+  })
+  let r: ToolCallResult | undefined
+  for (let i = 0; i < 3; i++) r = await bash($, 'x')
+  expect(r!.isError).toBe(true)
+  expect(notes(r!).length).toBe(1)
 })
 
 test('different inputs are counted apart, whitespace differences are not', async ($, on) => {
@@ -106,7 +146,7 @@ test('subagent calls are counted apart from the main loop and from each other', 
   expect(seen.toasts.length).toBe(0)
 
   // A success in one loop leaves the others' counts alone.
-  await bash($, 'ls', 'agent-2')
+  await bash($, 'npm install', 'agent-2')
   expect(notes(await bash($, 'tsc fail')).length).toBe(1)
   expect(notes(await bash($, 'tsc fail', 'agent-1')).length).toBe(1)
   expect(notes(await bash($, 'tsc fail', 'agent-2'))).toEqual([])
@@ -143,6 +183,17 @@ test('the tracker on its own', async () => {
   t.record({ tool: 'Grep', input: { path: '/x', pattern: 'a b', tool_use_id: 'tu2' } }, fail)
   expect(t.countOf(call)).toBe(2)
   expect(t.record(call, fail)?.count).toBe(3)
+
+  // A read-only success of the same call clears that call's count, and no other.
+  const other = { tool: 'Bash', input: { command: 'make' } }
+  t.record(other, fail)
+  t.record(call, { isError: false, isReadOnly: true })
+  expect(t.countOf(call)).toBe(0)
+  expect(t.countOf(other)).toBe(1)
+  // A success that is not read-only clears the loop.
+  t.record({ tool: 'Edit', input: { file_path: '/a' } }, { isError: false })
+  expect(t.countOf(other)).toBe(0)
+
   expect(keyOf({ tool: 'Bash', input: { command: 'ls', description: 'one' } })).toBe(keyOf({ tool: 'Bash', input: { command: 'ls ', description: 'two' } }))
   expect(keyOf({ tool: 'Grep', input: { pattern: 'a' } })).not.toBe(keyOf({ tool: 'Glob', input: { pattern: 'a' } }))
 })

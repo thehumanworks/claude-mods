@@ -26,12 +26,15 @@ Set on the screen the install shows, and afterwards in `/config`.
 
 | Question | Answer |
 | --- | --- |
-| What is a failure | A tool result marked as an error (`isError`). Bash reports a non-zero exit code this way, so a failing command counts. A call a permission rule or a hook refused never ran, so it does not count. |
-| What is the same call | The same tool with the same input, whitespace collapsed and key order ignored. For Bash only the command counts: `npm  test` and `npm test` are one call, a different description or timeout does not make another. |
+| What is a failure | A tool result marked as an error (`isError`). Bash reports a non-zero exit code this way. |
+| Refusals and interrupts | Claude Code hands these back as errors too. That covers a permission rule's deny, a "no" at the permission prompt, a settings hook's block, and an interrupt. They count as failures. |
+| What is not counted | A call another plugin's hook refused with `deny`: it never ran. Calls a plugin makes itself: their results go back to that plugin, not to Claude. |
+| What is the same call | The same tool with the same input. Whitespace is collapsed and key order is ignored. For Bash only the command counts. `npm  test` and `npm test` are one call. A different description or timeout does not make another. |
 | When the count goes up | At each failure of that call. Failures of other calls in between do not reset it. |
-| When the count resets | At any success in the same loop, of that call or of a different one. Claude did something that worked, so the next run of the failing call is a fresh try. |
+| When the count resets | When that same call succeeds. Or when a different call succeeds and it was not read-only. |
+| Read-only successes | They do not reset other calls. Claude Code marks a result read-only when the tool ran without changing anything: `ls`, `cat`, Read, Grep. Failing, looking around and retrying the same thing is still a loop. |
 | When the note comes | Once, at the failure that reaches the threshold. Later failures of the same call add nothing until its count has reset. |
-| Subagents | Each subagent (and teammate) is counted on its own, apart from the main conversation. A success in one does not reset another. |
+| Subagents | Each subagent (and teammate) is counted on its own. A success in one does not reset another. |
 
 The note is attached to the failing result as context the model reads after it, so it is in Claude's very next request. You do not see it in the transcript; the toast tells you it was sent. It reads like this:
 
@@ -46,7 +49,8 @@ The last error is quoted with its whitespace collapsed, up to 300 characters.
 
 - The counts live in memory: a restart or a resumed session starts from zero.
 - A loop where Claude changes the command a little each time (another flag, another path) is not caught: those are different calls.
-- A loop where a successful call sits between each retry (run the build, read a file, run the build) is not caught either: the success resets the count.
+- A loop with a change between each retry (run the build, edit a file, run the build) is not caught either. The edit resets the count. Only a read-only success leaves it standing.
+- If you refuse the same call at the permission prompt three times, Claude gets the note too. It tells Claude to ask you, which fits.
 - A command that fails but exits 0 is a success to the mod.
 
 ## Development

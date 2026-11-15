@@ -23,7 +23,12 @@ export type Call = {
 }
 
 /** What came of the call. */
-export type Outcome = { isError: boolean; text?: string }
+export type Outcome = {
+  isError: boolean
+  /** The tool ran the input read-only (core's `isReadOnly`): a look around, not a change of approach. */
+  isReadOnly?: boolean
+  text?: string
+}
 
 /** A call that has failed `threshold` times in a row. */
 export type Loop = {
@@ -77,8 +82,10 @@ export function labelOf(call: Call): string {
  *
  * - A failure adds one to that call's count. Failures of other calls in
  *   between do not reset it.
- * - Any success in the same loop, of that call or of a different one, clears
- *   every count in that loop: Claude has done something that worked.
+ * - A success of that call clears its count.
+ * - A success of a different call that is not read-only clears every count in
+ *   that loop: Claude has changed something. A read-only success (`ls`, Read,
+ *   Grep) clears nothing else: looking around and retrying is still a loop.
  * - At the threshold `record` returns the loop once; later failures of that
  *   call return nothing until its count has been cleared.
  */
@@ -89,13 +96,14 @@ export class Tracker {
 
   record(call: Call, outcome: Outcome): Loop | undefined {
     const loopId = call.agentId ?? ''
+    const key = keyOf(call)
     if (!outcome.isError) {
-      this.loops.delete(loopId)
+      if (outcome.isReadOnly === true) this.loops.get(loopId)?.delete(key)
+      else this.loops.delete(loopId)
       return undefined
     }
     let failing = this.loops.get(loopId)
     if (failing === undefined) this.loops.set(loopId, (failing = new Map()))
-    const key = keyOf(call)
     const entry = failing.get(key) ?? { count: 0, isNoted: false }
     failing.delete(key) // re-inserted last: the map is kept oldest first
     failing.set(key, { ...entry, count: entry.count + 1 })
@@ -111,6 +119,15 @@ export class Tracker {
     return this.loops.get(call.agentId ?? '')?.get(keyOf(call))?.count ?? 0
   }
 }
+
+/**
+ * Whether a `tool.call` is one the model made: raised by the engine and
+ * carrying the model's `tool_use_id`. A plugin's own `$.tool.call` is raised
+ * under that plugin's name (it gets an id of its own too), and what it
+ * answers goes back to the plugin, so a note on it would never reach Claude.
+ */
+export const isModelCall = (origin: { plugin: string }, toolUseId: string | undefined) =>
+  origin.plugin === 'engine' && typeof toolUseId === 'string' && toolUseId !== ''
 
 /** What Claude reads after the failing result. */
 export function noteFor(loop: Loop, tool: string): string {

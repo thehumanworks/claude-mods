@@ -1,0 +1,14 @@
+{
+  "name": "context-gauge",
+  "version": "0.1.0",
+  "description": "The context's fill against Claude Code's auto-compact limit on the status line, and a short note to Claude when it passes 50, 75 and 90%",
+  "author": { "name": "Tomas Roda" },
+  "userConfig": {
+    "bands": {
+      "type": "string",
+      "title": "Bands (%)",
+      "description": "Claude is told once when the context passes each of these percentages of the auto-compact limit, until the next compaction. Whole numbers from 1 to 99, separated by commas. off: the status line only.",
+      "default": "50, 75, 90"
+    }
+  }
+}

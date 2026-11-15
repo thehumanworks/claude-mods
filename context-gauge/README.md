@@ -58,6 +58,8 @@ When the context passes a band, Claude's next request carries one note, for exam
 - The mod keeps its state in memory. After a restart or a resume, a band already told can be told once more.
 - A rewind lowers the context without a compaction, so the bands told before it stay told until the next compaction.
 - Inside a turn the check runs at tool calls. A turn that grows the context with no tool call (one long answer) is caught at your next prompt.
+- Inside a turn a tool call is checked only when the size has moved since the last check. If only the limit changes mid-turn (`/autocompact`), a band it crosses waits until your next prompt.
+- A slash command claims no band, since it may never reach Claude. Neither does a tool call a plugin makes itself, since it takes no note. The next prompt or model tool call carries the band.
 - `/autocompact` and the auto-compact toggle redraw the line at once. A change to `autoCompactWindow` in a settings file shows at the next measurement.
 
 ## Development

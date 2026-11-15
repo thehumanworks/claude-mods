@@ -2,7 +2,7 @@
 // the status line, and one note to Claude each time it passes a band.
 
 import type { EngineInterface, Register } from 'claude-code'
-import { crossedBand, limitOf, note, parseBands, statusLine } from './gauge.js'
+import { crossedBand, isModelCall, limitOf, note, parseBands, statusLine } from './gauge.js'
 
 type $ = EngineInterface
 
@@ -39,6 +39,8 @@ export const register: Register = (on, options) => {
 
   // A note for the request that follows the user's prompt: the last response of a turn may have crossed a band.
   on('prompt.submit', async ($, e, next) => {
+    // A slash command may never reach the model: a note on it could be lost until the next compaction.
+    if (e.command !== undefined) return next(e)
     const before = state.noted
     const text = await measure($, state, true)
     if (text === undefined) return next(e)
@@ -48,10 +50,12 @@ export const register: Register = (on, options) => {
     return submitted
   }).catch(($, e, next) => next(e))
 
-  // Inside a turn: a note after a tool's result, read with the next request. Main loop only.
+  // Inside a turn: a note after a tool's result, read with the next request. The model's own calls in the main loop only.
   on('tool.call', async ($, e, next) => {
+    // A plugin's own call takes no context, so it may not claim a band.
+    if (e.agentId !== undefined || !isModelCall(next.origin, e.tool_use_id)) return next(e)
     const called = await next(e)
-    if (e.agentId !== undefined || called.deny !== undefined) return called
+    if (called.deny !== undefined) return called
     const { tokens } = (await $.session.usage()).context
     if (tokens === undefined || tokens === state.checkedTokens) return called
     state.checkedTokens = tokens

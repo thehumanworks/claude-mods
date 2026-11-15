@@ -1,5 +1,5 @@
-import { expect, test } from 'claude-code/testing'
-import { crossedBand, limitOf, note, parseBands, short, statusLine } from '../hooks/gauge.js'
+import { expect, test, type Plugin } from 'claude-code/testing'
+import { crossedBand, isModelCall, limitOf, note, parseBands, short, statusLine } from '../hooks/gauge.js'
 import { compact, compactionRow, engine, prompt, toolCall } from './helpers.js'
 
 // The engine of these tests compacts at 160k: the bands 50, 75 and 90 sit at 80k, 120k and 144k.
@@ -193,4 +193,58 @@ test('bands off: the status line only', { options: { bands: 'off' } }, async ($,
   expect(await prompt($)).toEqual([])
   expect(await toolCall($)).toEqual([])
   expect(seen.status.at(-1)).toBe('ctx 150k/160k · 93%')
+})
+
+test('a slash command claims no band: the next prompt that reaches the model carries it', async ($, on) => {
+  engine(on, { tokens: 130_000 })
+  expect(await prompt($, '/compact', { command: { name: 'compact', args: '' } })).toEqual([])
+  expect((await prompt($))[0]).toContain('Context past 75%')
+})
+
+test('only the model own tool calls count', async () => {
+  expect(isModelCall({ plugin: 'engine' }, 'toolu_1')).toBe(true)
+  expect(isModelCall({ plugin: 'engine' }, '')).toBe(false)
+  expect(isModelCall({ plugin: 'engine' }, undefined)).toBe(false)
+  // A plugin's own `$.tool.call` carries an id too, and takes no context.
+  expect(isModelCall({ plugin: 'other-mod' }, 'toolu_2')).toBe(false)
+})
+
+const caller: Plugin = {
+  name: 'caller',
+  register: on => {
+    on('command.run', { command: 'probe' }, async $ => {
+      const called = (await $.tool.call({ tool: 'Bash', command: 'ls', tool_use_id: 'toolu_mine' } as never)) as { context?: readonly string[] }
+      return { text: JSON.stringify(called.context ?? []) }
+    })
+  },
+}
+
+test('a plugin own tool call claims no band', { plugins: [caller] }, async ($, on) => {
+  engine(on, { tokens: 130_000 })
+  const { text } = await $.command.run({ command: 'probe', args: '' } as never)
+  expect(text).toBe('[]')
+  expect((await toolCall($))[0]).toContain('Context past 75%')
+})
+
+test('a context already there is kept and the note goes after it, on both routes', async ($, on) => {
+  const world = { tokens: 85_000, toolContext: ['FROM-CORE'] }
+  engine(on, world)
+  expect(await toolCall($)).toEqual(['FROM-CORE', expect.stringContaining('Context past 50%')])
+  world.tokens = 130_000
+  expect(await prompt($, 'go on', { context: ['OTHER'] })).toEqual(['OTHER', expect.stringContaining('Context past 75%')])
+})
+
+test('a failing usage read breaks neither the tool call nor the prompt', async ($, on) => {
+  const world = { tokens: 130_000, isUsageFailing: true }
+  const { seen } = engine(on, world)
+  const called = (await $.tool.call({ tool: 'Bash', command: 'ls', tool_use_id: 'toolu_f' } as never)) as { result?: unknown; deny?: string }
+  expect(called.deny).toBeUndefined()
+  expect(called.result).toEqual({ stdout: 'ok' })
+  expect(seen.toolRuns).toBe(1) // the tool ran once
+  const submitted = (await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'user' } } as never)) as { text?: string; drop?: string }
+  expect(submitted.drop).toBeUndefined()
+  expect(submitted.text).toBe('hi')
+  // Once usage reads again, the band is still to tell.
+  world.isUsageFailing = false
+  expect((await prompt($))[0]).toContain('Context past 75%')
 })

@@ -101,3 +101,10 @@ export function note(band: number, tokens: number, limit: Limit): string {
     : `of the ${full(limit.tokens)}-token window (auto-compact is off)`
   return `[context-gauge] Context past ${band}%: ${full(tokens)} tokens used ${where}. ${suggestion(band, limit.isAuto)}`
 }
+
+/**
+ * Whether a tool call is the model's own, as the loop-breaker mod tells it: raised by the engine
+ * with a tool_use_id. A plugin's own `$.tool.call` carries an id too, but takes no context.
+ */
+export const isModelCall = (origin: { plugin: string }, toolUseId: string | undefined) =>
+  origin.plugin === 'engine' && typeof toolUseId === 'string' && toolUseId !== ''

@@ -13,14 +13,19 @@ export type World = {
   sessionId?: string
   /** Claude Code leaves the conversation as it is (a PreCompact hook blocked it). */
   isCompactSkipped?: boolean
+  /** `$.session.usage` throws. */
+  isUsageFailing?: boolean
+  /** What core attaches after the tool's result. */
+  toolContext?: string[]
 }
 
 /** Stands in for Claude Code beneath the plugin. */
 export function engine(on: On, world: World) {
-  const seen = { status: [] as (string | undefined)[], logs: [] as string[], breakdowns: 0 }
+  const seen = { status: [] as (string | undefined)[], logs: [] as string[], breakdowns: 0, toolRuns: 0 }
   on('session.id', () => ({ value: world.sessionId ?? 'session-1' }))
   on('env.get', (_, e) => ({ value: world.env?.[e.name] }) as never)
   on('session.usage', (_, e) => {
+    if (world.isUsageFailing) throw new Error('usage unavailable')
     if (e.breakdown) seen.breakdowns++
     const isAuto = world.isAutoCompactEnabled ?? true
     return {
@@ -52,21 +57,25 @@ export function engine(on: On, world: World) {
   })
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
-  on('tool.call', () => ({ result: { stdout: 'ok' } }) as never)
+  on('tool.call', () => {
+    if (world.isUsageFailing) seen.toolRuns++
+    return (world.toolContext ? { result: { stdout: 'ok' }, context: world.toolContext } : { result: { stdout: 'ok' } }) as never
+  })
   on('session.compact', () => (world.isCompactSkipped ? { skip: 'not now' } : { messages: [{ role: 'user', text: 'SUMMARY', toolUses: [] }] }))
   on('session.measure', (_, e) => ({ changed: e.changed }))
   return { seen }
 }
 
-/** What Claude reads beside the user's prompt. */
-export async function prompt($: Engine, text = 'go on'): Promise<readonly string[]> {
-  const submitted = await $.prompt.submit({ text, wait: false, origin: { kind: 'user' } } as never)
+/** What Claude reads beside the user's prompt; `more` adds fields of the submission (a `command`, a `context`). */
+export async function prompt($: Engine, text = 'go on', more: Record<string, unknown> = {}): Promise<readonly string[]> {
+  const submitted = await $.prompt.submit({ text, wait: false, origin: { kind: 'user' }, ...more } as never)
   return (submitted as { context?: readonly string[] }).context ?? []
 }
 
 /** What Claude reads after a tool's result, in the main loop or a subagent's. */
+let calls = 0
 export async function toolCall($: Engine, agentId?: string): Promise<readonly string[]> {
-  const called = await $.tool.call({ tool: 'Bash', command: 'ls', ...(agentId && { agentId }) } as never)
+  const called = await $.tool.call({ tool: 'Bash', command: 'ls', tool_use_id: `tu${++calls}`, ...(agentId && { agentId }) } as never)
   return (called as { context?: readonly string[] }).context ?? []
 }
 

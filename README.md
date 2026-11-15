@@ -8,6 +8,7 @@ Mods for Claude Code.
 | [async-compaction](./async-compaction) | Background compaction: a cheap model summarizes the conversation ahead of time, and at the compaction limit the summary is swapped in with the latest messages kept raw |
 | [loop-breaker](./loop-breaker) | Notices when Claude repeats the same failing tool call and tells it to stop retrying and change approach |
 | [context-gauge](./context-gauge) | Context used against the auto-compact limit on the status line, and a short note to Claude when it passes 50, 75 and 90% |
+| [edit-check](./edit-check) | After Claude edits files, runs the project's own check command in the background and hands Claude the new errors at its next request |
 
 ## Install
 

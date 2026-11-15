@@ -23,6 +23,11 @@
       "name": "context-gauge",
       "source": "./context-gauge",
       "description": "Context used against the auto-compact limit on the status line, and a short note to Claude when it passes 50, 75 and 90%"
+    },
+    {
+      "name": "edit-check",
+      "source": "./edit-check",
+      "description": "After Claude edits files, runs the project's own check command in the background and hands Claude the new errors at its next request"
     }
   ]
 }

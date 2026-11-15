@@ -1,0 +1,36 @@
+{
+  "name": "edit-check",
+  "version": "0.1.0",
+  "description": "After Claude edits files, runs the project's own check command in the background and hands Claude the new errors at its next request",
+  "author": { "name": "Tomas Roda" },
+  "userConfig": {
+    "command": {
+      "type": "string",
+      "title": "Check command",
+      "description": "The command to run after edits, through the shell, in the session's folder: say npx tsc --noEmit -p . or ruff check . Empty: the mod is off.",
+      "default": ""
+    },
+    "globs": {
+      "type": "string",
+      "title": "Files it applies to",
+      "description": "Globs of the edited files that start a check, separated by commas, relative to the session's folder: say **/*.ts,**/*.tsx. A glob without a slash matches the file name anywhere. Empty: every file.",
+      "default": ""
+    },
+    "timeoutSeconds": {
+      "type": "number",
+      "title": "Timeout (seconds)",
+      "description": "A check still running after this long is stopped and its result dropped. 1 to 600.",
+      "default": 60,
+      "min": 1,
+      "max": 600
+    },
+    "maxChars": {
+      "type": "number",
+      "title": "Max characters of output",
+      "description": "What Claude is handed of the errors is cut to this many characters. 200 to 50000.",
+      "default": 4000,
+      "min": 200,
+      "max": 50000
+    }
+  }
+}

@@ -24,3 +24,7 @@ claude plugin install turn-stats --marketplace thehumanworks/claude-mods
 ```
 
 In the desktop app: click **+** next to the prompt box → **Plugins** → **Add marketplace** with `thehumanworks/claude-mods`, then **Add plugin**.
+
+## Development
+
+CI (`.github/workflows/validate.yml`) runs `claude plugin validate` and `claude plugin test` on every mod listed in `.claude-plugin/marketplace.json`, for pull requests and pushes to main. It needs no secrets. A new mod is covered once it has a marketplace entry; to run the same checks locally use `claude plugin validate ./<mod>` and `claude plugin test ./<mod>`.

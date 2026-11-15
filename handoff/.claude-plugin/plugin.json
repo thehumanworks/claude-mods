@@ -1,0 +1,46 @@
+{
+  "name": "handoff",
+  "version": "0.1.0",
+  "description": "Keeps a short handoff note per repository (the work, what was done, what is next, open problems), written by a small model after turns that do real work, and hands it to Claude at session start and after each compaction",
+  "author": {
+    "name": "Tomas Roda"
+  },
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Handoff notes",
+      "description": "Off: no note is written or shown.",
+      "default": true
+    },
+    "model": {
+      "type": "string",
+      "title": "Model",
+      "description": "The model that writes the note: an alias or a full model id. Called through Claude Code, on the signed-in account.",
+      "default": "claude-haiku-5-5"
+    },
+    "minTools": {
+      "type": "number",
+      "title": "Tool calls that count as work",
+      "description": "A turn that edits no file updates the note only when Claude made at least this many tool calls in it. 1 to 100.",
+      "default": 5,
+      "min": 1,
+      "max": 100
+    },
+    "minSecondsBetween": {
+      "type": "number",
+      "title": "Seconds between notes",
+      "description": "The note is written at most once in this many seconds. Turns in between are kept and go into the next note. 0 to 3600.",
+      "default": 120,
+      "min": 0,
+      "max": 3600
+    },
+    "timeoutSeconds": {
+      "type": "number",
+      "title": "Model timeout (seconds)",
+      "description": "The model call is given up after this long, and the old note stays. 2 to 60.",
+      "default": 15,
+      "min": 2,
+      "max": 60
+    }
+  }
+}

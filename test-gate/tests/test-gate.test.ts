@@ -25,11 +25,40 @@ test('test commands: a part of the command starts with a pattern, runners stripp
   for (const c of no) expect([c, isTestCommand(c, DEFAULT_PATTERNS)]).toEqual([c, false])
 })
 
+test('test commands: package managers, runners and prefixes all count', async () => {
+  const yes = [
+    // pnpm, yarn and bun forms of test, check, lint and typecheck
+    'pnpm test', 'pnpm lint', 'pnpm typecheck', 'pnpm run check', 'yarn lint', 'yarn test', 'bun test', 'bun run lint',
+    'bun run typecheck', 'npm run type-check', 'yarn run test:e2e',
+    // runner forms
+    'pnpm vitest run', 'yarn jest', 'node --test', 'npx --yes tsc', 'npx -y vitest run',
+    // prefixed forms
+    'pnpm -C pkg test', 'npm --prefix pkg test', 'yarn workspace x test', 'pnpm --filter web lint', 'sudo make test', 'bash -c "npm test"', "sh -c 'cd pkg && pytest'",
+    // a part in a subshell
+    'cd a && (npm test)',
+  ]
+  for (const c of yes) expect([c, isTestCommand(c, DEFAULT_PATTERNS)]).toEqual([c, true])
+})
+
+test('test commands: a version check or a quoted commit message is not a test run', async () => {
+  const no = [
+    'tsc --version', 'npx jest --version', 'jest --version', 'pytest --help', 'npm install', 'pnpm add -D vitest', 'yarn build',
+    'git commit -m "Fix parser; npm test passes"', "git commit -m 'run pytest later'",
+    "git commit -F - <<'EOF'\nFix parser\n\nnpm test\nEOF", 'test -f package.json',
+  ]
+  for (const c of no) expect([c, isTestCommand(c, DEFAULT_PATTERNS)]).toEqual([c, false])
+  // A test run after the commit still counts.
+  expect(isTestCommand('git commit -m "wip" && npm test', DEFAULT_PATTERNS)).toBe(true)
+})
+
 test('the user saying not to test is caught in plain words', async () => {
   for (const p of ["Fix it, don't run tests", 'no tests please', 'Do not run the tests, just edit', 'skip the tests', 'Quick fix without testing', 'don’t test this']) {
     expect([p, saysNoTests(p)]).toEqual([p, true])
   }
-  for (const p of ['Fix the parser bug', 'Add tests for the parser', 'Run the tests after']) expect([p, saysNoTests(p)]).toEqual([p, false])
+  for (const p of ['Fix the parser bug', 'Add tests for the parser', 'Run the tests after', 'CI says no tests ran, fix that', 'pytest printed no tests found',
+    "Don't skip the tests this time", 'do not skip tests', 'never skip the checks']) {
+    expect([p, saysNoTests(p)]).toEqual([p, false])
+  }
 })
 
 test('code files by the code-only rule: docs, config and data are not code', async () => {
@@ -97,6 +126,7 @@ test('edits without tests, the model says yes: the turn goes on once with the no
   expect(asked.prompt).toContain('Fix the parser bug')
   expect(asked.prompt).toContain('Fixed the off-by-one in the parser.')
   expect(asked.system).toContain('ANSWER: yes or no')
+  expect(asked.system).toContain('exactly one shell command')
 })
 
 test('edits without tests, the model says no: the turn ends', async ($, on) => {

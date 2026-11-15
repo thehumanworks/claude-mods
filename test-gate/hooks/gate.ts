@@ -6,11 +6,14 @@ export const $name = 'test-gate'
 
 export const DEFAULT_MODEL = 'claude-haiku-5-5'
 
-/** Commands that count as a test or check run. Each matches a command that starts with it. */
+/**
+ * Commands that count as a test or check run. Each matches a command that starts with it. A package
+ * manager pattern (`npm test`, `npm run lint`) covers the same script run by npm, pnpm, yarn or bun,
+ * with or without `run`.
+ */
 export const DEFAULT_PATTERNS = [
-  'npm test', 'npm t', 'npm run test', 'npm run check', 'npm run lint', 'npm run typecheck',
-  'bun test', 'bun run test', 'pnpm test', 'pnpm run test', 'yarn test', 'yarn run test',
-  'deno test', 'vitest', 'jest', 'mocha', 'playwright test', 'tsc', 'eslint',
+  'npm test', 'npm t', 'npm run check', 'npm run lint', 'npm run typecheck', 'npm run type-check',
+  'deno test', 'node --test', 'vitest', 'jest', 'mocha', 'playwright test', 'tsc', 'eslint',
   'pytest', 'tox', 'nox', 'mypy', 'ruff check', 'unittest',
   'cargo test', 'cargo check', 'cargo clippy', 'cargo nextest',
   'go test', 'go vet',
@@ -57,24 +60,66 @@ export function splitPatterns(text: string): string[] {
 }
 
 // What runs a command without being it: stripped before matching.
-const RUNNERS = /^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+|(?:npx|bunx|pnpm dlx|pnpm exec|yarn dlx|uv run|poetry run|pipenv run|bundle exec|time|nice|exec|env|command)\s+|timeout\s+\S+\s+|python3?\s+-m\s+)/
+const RUNNERS = /^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+|(?:npx|bunx|sudo|pnpm dlx|pnpm exec|yarn dlx|uv run|poetry run|pipenv run|bundle exec|time|nice|exec|env|command)(?:\s+-\S+)*\s+|timeout\s+\S+\s+|python3?\s+-m\s+)/
+const PACKAGE_MANAGER = /^(?:npm|pnpm|yarn|bun)\b\s*/
+// A package manager's options that pick a folder or a workspace, with their values: stripped too.
+const PM_OPTIONS = /^(?:(?:-C|--prefix|--dir|--cwd|--filter|-F|--workspace)(?:=|\s+)\S+|workspace\s+\S+|-w|-r|-s|--recursive|--silent|--if-present)\s*/
+// A command the shell runs from a string: `bash -c "npm test"`.
+const SHELL_C = /\b(?:ba|z)?sh\s+-c\s+(["'])(.*?)\1/g
+// A heredoc's body is text, not commands: a commit message that mentions `npm test` runs nothing.
+const HEREDOC = /<<-?\s*(["']?)(\w+)\1[^\n]*\n[\s\S]*?\n\s*\2[ \t]*(?=\n|$)/g
 
-/** Whether a Bash command runs a test or check: any of its `&&`, `;` or `|` parts starts with a pattern. */
+/**
+ * The command a part comes to once runners and folder options are stripped. A package manager's
+ * scripts come out as `pm:<script>`, whichever manager ran them and whether `run` was said, so
+ * `pnpm -C pkg lint` and `npm run lint` meet; `also` is the rest run as a tool (`pnpm vitest run`).
+ */
+function canonical(part: string): { cmd: string; also?: string } {
+  let cmd = part.trim().replace(/^\(+\s*/, '').replace(/\s*\)+$/, '').replace(/\s+/g, ' ')
+  for (let prev = ''; prev !== cmd; ) {
+    prev = cmd
+    cmd = cmd.replace(RUNNERS, '')
+  }
+  if (!PACKAGE_MANAGER.test(cmd)) return { cmd }
+  let rest = cmd.replace(PACKAGE_MANAGER, '')
+  for (let prev = ''; prev !== rest; ) {
+    prev = rest
+    rest = rest.replace(PM_OPTIONS, '')
+  }
+  rest = rest.replace(/^(?:run|run-script)\s+/, '')
+  for (let prev = ''; prev !== rest; ) {
+    prev = rest
+    rest = rest.replace(PM_OPTIONS, '')
+  }
+  return { cmd: `pm:${rest}`, also: rest }
+}
+
+/**
+ * Whether a Bash command runs a test or check: any of its `&&`, `;`, `|` parts (and the string of a
+ * `bash -c`) starts with a pattern. Quoted text and heredoc bodies are not commands, and a part that
+ * only asks for a version or help runs nothing.
+ */
 export function isTestCommand(command: string, patterns: readonly string[]): boolean {
-  for (const raw of command.split(/&&|\|\||[;|\n]/)) {
-    let part = raw.trim().replace(/^\(+\s*/, '').replace(/\s+/g, ' ')
-    for (let prev = ''; prev !== part; ) {
-      prev = part
-      part = part.replace(RUNNERS, '')
-    }
-    if (patterns.some(p => part === p || part.startsWith(`${p} `) || part.startsWith(`${p}:`))) return true
+  const wanted = patterns.map(p => canonical(p).cmd)
+  const text = command
+    .replace(HEREDOC, '')
+    .replace(SHELL_C, (_, _q: string, inner: string) => `; ${inner} ;`)
+    .replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""')
+  for (const raw of text.split(/&&|\|\||[;|\n]/)) {
+    const { cmd, also } = canonical(raw)
+    if (/\s--(?:version|help)\b/.test(` ${cmd}`)) continue
+    const starts = (c: string, p: string) => c === p || c.startsWith(`${p} `) || c.startsWith(`${p}:`)
+    if (wanted.some(p => starts(cmd, p) || (also !== undefined && starts(also, p)))) return true
   }
   return false
 }
 
 const NO_TESTS = [
-  /\b(?:don'?t|do not|dont|no need to|never|skip|without)\s+(?:run(?:ning)?\s+|writ(?:e|ing)\s+|add(?:ing)?\s+)?(?:any\s+|the\s+)?(?:tests?|testing|checks?)\b/i,
-  /\bno\s+(?:tests?|testing)\b/i,
+  /\b(?:don'?t|do not|dont|no need to|never|without)\s+(?:run(?:ning)?\s+|writ(?:e|ing)\s+|add(?:ing)?\s+)?(?:any\s+|the\s+)?(?:tests?|testing|checks?)\b/i,
+  // "skip the tests", but not "don't skip the tests".
+  /(?<!\b(?:don'?t|do not|dont|never|not)\s+)\bskip(?:ping)?\s+(?:any\s+|the\s+)?(?:tests?|testing|checks?)\b/i,
+  // "no tests", but not a report of a run: "no tests ran", "no tests found".
+  /\bno\s+(?:tests?|testing)\b(?!\s+(?:ran|run|were|was|are|is|found|exist|existed|matched|match|collected|selected|passed|failed|executed))/i,
   /\b(?:tests?|testing)\s+(?:are\s+|is\s+)?not\s+needed\b/i,
 ]
 
@@ -126,7 +171,7 @@ export const SYSTEM = [
   'Reply with exactly three lines and nothing else:',
   'ANSWER: yes or no',
   'REASON: one short line',
-  'COMMAND: the command to run, or none',
+  'COMMAND: exactly one shell command to run (no && chains, no alternatives), or none',
 ].join('\n')
 
 export type Question = { paths: readonly string[]; edits: readonly Edit[]; prompt: string; answer: string }

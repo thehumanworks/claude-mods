@@ -29,8 +29,8 @@
     "testPatterns": {
       "type": "string",
       "title": "Test and check commands",
-      "description": "Bash commands that count as a test or check run, separated by commas. A command counts when it, or a part of it after && ; or |, starts with one of these. Empty: the defaults.",
-      "default": "npm test, npm t, npm run test, npm run check, npm run lint, npm run typecheck, bun test, bun run test, pnpm test, pnpm run test, yarn test, yarn run test, deno test, vitest, jest, mocha, playwright test, tsc, eslint, pytest, tox, nox, mypy, ruff check, unittest, cargo test, cargo check, cargo clippy, cargo nextest, go test, go vet, make test, make check, make lint, mvn test, mvn verify, gradle test, ./gradlew test, dotnet test, mix test, rspec, rake test, phpunit, swift test, claude plugin test, claude plugin validate"
+      "description": "Bash commands that count as a test or check run, separated by commas. A command counts when it, or a part of it after && ; or |, starts with one of these. A package manager pattern (npm run lint) covers pnpm, yarn and bun too. Empty: the defaults.",
+      "default": "npm test, npm t, npm run check, npm run lint, npm run typecheck, npm run type-check, deno test, node --test, vitest, jest, mocha, playwright test, tsc, eslint, pytest, tox, nox, mypy, ruff check, unittest, cargo test, cargo check, cargo clippy, cargo nextest, go test, go vet, make test, make check, make lint, mvn test, mvn verify, gradle test, ./gradlew test, dotnet test, mix test, rspec, rake test, phpunit, swift test, claude plugin test, claude plugin validate"
     }
   }
 }

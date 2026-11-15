@@ -45,19 +45,21 @@ Set on the screen the install shows, and afterwards in `/config`.
 | Model timeout (`timeoutSeconds`) | `10` | The call is given up after this long, and the code-only rule decides. 2 to 60. |
 | Test and check commands (`testPatterns`) | see below | Bash commands that count as a test or check run, separated by commas. Empty: the defaults. |
 
-A command counts when it, or a part of it after `&&`, `;` or `|`, starts with one of the patterns. Runners in front are skipped: `npx`, `bunx`, `uv run`, `poetry run`, `bundle exec`, `python -m`, `timeout 60`, `VAR=value`. So `cd pkg && npx tsc --noEmit` and `python -m pytest -q` both count.
+A command counts when it, or a part of it after `&&`, `;` or `|`, starts with one of the patterns. Runners in front are skipped, with their flags: `npx`, `npx --yes`, `bunx`, `sudo`, `uv run`, `poetry run`, `bundle exec`, `python -m`, `timeout 60`, `VAR=value`. So `cd pkg && npx tsc --noEmit` and `python -m pytest -q` both count.
 
 The defaults:
 
 | Ecosystem | Patterns |
 | --- | --- |
-| JavaScript | `npm test`, `npm t`, `npm run test`, `npm run check`, `npm run lint`, `npm run typecheck`, `bun test`, `bun run test`, `pnpm test`, `pnpm run test`, `yarn test`, `yarn run test`, `deno test`, `vitest`, `jest`, `mocha`, `playwright test`, `tsc`, `eslint` |
+| JavaScript | `npm test`, `npm t`, `npm run check`, `npm run lint`, `npm run typecheck`, `npm run type-check`, `deno test`, `node --test`, `vitest`, `jest`, `mocha`, `playwright test`, `tsc`, `eslint` |
 | Python | `pytest`, `tox`, `nox`, `mypy`, `ruff check`, `unittest` |
 | Rust, Go | `cargo test`, `cargo check`, `cargo clippy`, `cargo nextest`, `go test`, `go vet` |
 | Make, JVM, .NET | `make test`, `make check`, `make lint`, `mvn test`, `mvn verify`, `gradle test`, `./gradlew test`, `dotnet test` |
 | Others | `mix test`, `rspec`, `rake test`, `phpunit`, `swift test`, `claude plugin test`, `claude plugin validate` |
 
-`npm run test:unit` counts for `npm run test`.
+A package manager pattern covers the same script under npm, pnpm, yarn and bun, with or without `run`: `npm run lint` also matches `pnpm lint`, `yarn lint` and `bun run lint`, and `npm test` matches `npm run test:unit`. Options that pick a folder or workspace are skipped (`pnpm -C pkg test`, `npm --prefix pkg test`, `yarn workspace x test`, `pnpm --filter web lint`), and so is the package manager in front of a tool (`pnpm vitest run`, `yarn jest`). The string of `bash -c "..."` is read as a command, and so is a part in parentheses (`cd a && (npm test)`).
+
+Not counted: a part that only asks for `--version` or `--help`, and text inside quotes or a heredoc, such as a `git commit -m "..."` message that mentions `npm test`.
 
 ## How it works
 
@@ -74,6 +76,7 @@ The defaults:
 - The prompt check is a plain pattern match. "There are no tests for this" also reads as "no tests".
 - A test run through a script the patterns do not know (`./run-checks.sh`) does not count. Add it to the patterns.
 - If Claude ran the tests in a subagent, the main loop still counts as untested.
+- File edits made through Bash (`sed -i`, `printf >> file`, a heredoc into a file) are not tracked. Only Edit, Write and NotebookEdit count as edits.
 - If another Stop hook blocks first, the turn goes on for that hook, and this mod does not nudge in that turn.
 
 ## Development

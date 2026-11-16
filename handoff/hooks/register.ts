@@ -42,13 +42,15 @@ type Runtime = {
   startedSession?: string
   /** A compaction of the main conversation happened: the next prompt carries the note. */
   isCompacted: boolean
+  /** The session is ending: no debounced call is set up; the end writes what is left. */
+  isEnding: boolean
 }
 
 export const register: Register = (on, options) => {
   const { config, problems } = resolveConfig(options)
   // Off: no hook at all.
   if (!config.enabled) return
-  const rt: Runtime = { config, work: emptyWork(), isDue: false, turn: { tools: 0, edits: 0 }, roots: new Map(), isCompacted: false }
+  const rt: Runtime = { config, work: emptyWork(), isDue: false, turn: { tools: 0, edits: 0 }, roots: new Map(), isCompacted: false, isEnding: false }
 
   on('session.start', async ($, e, next) => {
     const started = await next(e)
@@ -70,6 +72,8 @@ export const register: Register = (on, options) => {
   // A typed prompt of the main loop: what the work was for.
   on('turn.start', async ($, e, next) => {
     if (e.agentId === undefined) {
+      // A turn after /clear: the process went on under a new session.
+      rt.isEnding = false
       rt.turn = { tools: 0, edits: 0 }
       addPrompt(rt.work, e.text)
     }
@@ -118,18 +122,30 @@ export const register: Register = (on, options) => {
     return completed
   }).catch(($, e, next) => next(e))
 
-  // The session's end: what is left goes into one more note, within Claude Code's short exit bound.
+  // The session's end: a note still being written is waited for, and what is left goes into one
+  // more note, all within Claude Code's short exit bound.
   on('session.end', async ($, e, next) => {
+    rt.isEnding = true
     rt.timer?.cancel()
     rt.timer = undefined
     const ended = await next(e)
     try {
-      if (rt.running !== undefined || !isWorthNote(rt.work, rt.config.minTools)) return ended
       if (e.reason === 'clear') {
         // The process goes on under a new session: the note is written off the exit's clock.
-        $.clock.after(0, () => void write($, rt, 'session end (/clear)'))
+        $.clock.after(0, () => void endAfterClear($, rt))
         return ended
       }
+      if (rt.running !== undefined) {
+        // In a `-p` run, or an exit right after a turn, the process ends with the call: it is waited for.
+        const wait = next.budget.remainingMs - END_MARGIN_MS
+        debug($, `session end: a note is being written; waiting up to ${Math.max(0, Math.round(wait))}ms`)
+        if (wait > 0) await Promise.race([rt.running, $.clock.sleep(wait)])
+        if (rt.running !== undefined) {
+          debug($, 'session end: the exit bound ran out before the note was written')
+          return ended
+        }
+      }
+      if (!isWorthNote(rt.work, rt.config.minTools)) return ended
       const left = next.budget.remainingMs - END_MARGIN_MS
       const timeoutMs = Math.min(rt.config.timeoutSeconds * 1000, left)
       if (timeoutMs < END_MIN_MS) {
@@ -185,6 +201,12 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 }
 
+/** After /clear: the call in flight, if any, ends; then what is left goes into one more note. Never throws. */
+async function endAfterClear($: $, rt: Runtime): Promise<void> {
+  if (rt.running !== undefined) await rt.running
+  if (isWorthNote(rt.work, rt.config.minTools)) await write($, rt, 'session end (/clear)')
+}
+
 function compactedNow($: $, rt: Runtime, why: string): void {
   if (!rt.isCompacted) debug($, `compaction seen (${why}): the next prompt carries the note`)
   rt.isCompacted = true
@@ -193,16 +215,19 @@ function compactedNow($: $, rt: Runtime, why: string): void {
 /**
  * Starts a note now, or once the debounce has passed, off the hook's path:
  * the turn never waits for the model. One call at a time; work done while a
- * call runs, or while the debounce holds, goes into the next.
+ * call runs, or while the debounce holds, goes into the next. Once the session
+ * is ending, the end writes what is left instead.
  */
 async function schedule($: $, rt: Runtime): Promise<void> {
-  if (!rt.isDue || rt.running !== undefined || rt.timer !== undefined) return
+  if (!rt.isDue || rt.isEnding || rt.running !== undefined || rt.timer !== undefined) return
   const now = await $.clock.now()
+  if (rt.isEnding || rt.running !== undefined || rt.timer !== undefined) return
   const wait = rt.calledAt === undefined ? 0 : rt.calledAt + rt.config.minSecondsBetween * 1000 - now
   if (wait > 0) debug($, `note due; written in ${Math.ceil(wait / 1000)}s (at most one every ${rt.config.minSecondsBetween}s)`)
   rt.timer = $.clock.after(Math.max(0, wait), () => {
     rt.timer = undefined
-    void write($, rt, 'turn end')
+    // The end may have written the work meanwhile.
+    if (rt.isDue) void write($, rt, 'turn end')
   })
 }
 

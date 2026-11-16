@@ -20,9 +20,9 @@ Answer `y` to add the marketplace, then pick a scope. From a checkout, for one s
 | --- | --- |
 | Model | `claude-haiku-5-5` (fast, small, cheap), through Claude Code's own model call |
 | When it is called | After a turn of the main conversation that edited a file, or made 5 or more tool calls. At most once every 120 seconds: turns in between are kept and go into the next call. Once more when the session ends, if work is left over. |
-| Input | Capped at about 7,600 characters: the instructions (800), the previous note (1,500), your last prompts (1,000), the edited paths (1,000), the commands run (1,500, each cut to 200) and Claude's last message (1,500). That is at most about 2,000 input tokens; a typical call is 500 to 1,200. |
+| Input | Capped at about 7,800 characters: the instructions (about 960), the previous note (1,500), your last prompts (1,000), the edited paths (1,000), the commands run (1,500, each cut to 200) and Claude's last message (1,500). That is at most about 2,000 input tokens; a typical call is 500 to 1,200. |
 | Output | The note, about 150 to 350 tokens; capped at 600 tokens, and the note is cut at 1,500 characters. |
-| Time | Given up after 15 seconds by default. The turn never waits for it. |
+| Time | Given up after 15 seconds by default. The turn never waits for it; only the session's end does, within Claude Code's exit bound. |
 | How often | At most 30 calls an hour with the defaults, and only while Claude is working. |
 
 The calls count toward the session's cost in `/cost`, like any other.
@@ -69,13 +69,19 @@ Set on the screen the install shows, and afterwards in `/config`.
 - **Debounce.** If a call was made less than 120 seconds ago, the note waits until the window has passed, then one call covers every turn since. One call runs at a time.
 - **One note per repository.** The repository is the git top level of the working directory, or the directory itself outside git. Notes live in the mod's own store. Up to 50 repositories are kept; past that, the note written longest ago goes.
 - **When it fails.** If the call fails, times out or answers nothing, the old note stays and `/handoff` says why. The work goes into the next call, made at the next turn that counts or at the session's end. A failed call is never retried on its own.
-- **At the session's end.** If work is left that no note covers yet, one more call is made. Claude Code gives every exit hook together a short bound (1.5 seconds by default), so this call gets what is left of it, and is not made with less than half a second. After `/clear` the process goes on, so the call runs normally.
+- **At the session's end.** Claude Code gives every exit hook together a short bound (1.5 seconds by default). If a note is still being written, the mod waits for it within that bound. Then, if work is left that no note covers yet, one more call is made with what is left of the bound; it is not made with less than half a second. After `/clear` the process goes on, so both run normally, off the exit's clock.
 - **When Claude reads it.** At the first prompt of each session (a new one, a resume, or after `/clear`) and at the first prompt after each compaction of the main conversation. A slash command does not take it; the next prompt does. A compaction is seen from Claude Code's compaction event, the compaction row, or a SessionStart with source `compact`, so a summary written by another mod counts too.
 
 ## Limits
 
 - File edits made through Bash (`sed -i`, a heredoc into a file) are not tracked as edits. They still count as tool calls.
-- The session-end note often does not finish within Claude Code's exit bound. Notes written at turn ends are the reliable ones.
+- A `claude -p` run, or exiting right after a turn, usually loses that turn's note. The note is written after the turn ends and takes a few seconds; the process exits first, and Claude Code's default exit bound for hooks (1.5 seconds) is too short for the call. Raise the bound to keep those notes, for example:
+
+  ```
+  CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS=20000 claude -p "..."
+  ```
+
+  The exit then waits up to that long, and only while a note is being written or is due. In an interactive session that goes on for a while after a turn, the note is written long before the exit, and none of this matters.
 - After a compaction in the middle of a long turn, the note waits for your next prompt.
 - Two sessions in the same repository share one note. The last to write wins.
 - The note is a small model's summary. Claude is told to trust the code where they differ.

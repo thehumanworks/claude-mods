@@ -1,6 +1,6 @@
 import type { Register } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
-import { CAPS, commandText, contextFor, emptyWork, MAX_INPUT_CHARS, MAX_NOTE_CHARS, mergeWork, parseNote, questionText, readNotes, resolveConfig, withNote } from '../hooks/note.js'
+import { CAPS, commandText, contextFor, emptyWork, MAX_INPUT_CHARS, MAX_NOTE_CHARS, mergeWork, parseNote, questionText, readNotes, resolveConfig, SYSTEM, withNote } from '../hooks/note.js'
 import { engine, fiveReads } from './helpers.js'
 
 const ROOT = '/work/app'
@@ -47,6 +47,13 @@ test('notes per repository: the oldest goes past the cap, and junk is dropped', 
   notes = withNote(notes, '/d', { note: 'D', writtenAt: 5, model: 'm', sessionId: 's' }, 2)
   expect(Object.keys(notes).sort()).toEqual(['/b', '/d'])
   expect(readNotes('nonsense')).toEqual({})
+  // A note too long in the store (written by hand, or by another version) is cut as a reply would be.
+  const long = readNotes({ '/a': { note: 'n'.repeat(10_000), writtenAt: 1, model: 'm', sessionId: 's' } })
+  expect(long['/a']!.note.length).toBe(MAX_NOTE_CHARS)
+})
+
+test('the model is told not to remark on gaps in its own input', async () => {
+  expect(SYSTEM).toContain('never remark on what your input lacks')
 })
 
 test('work merges with the latest kept', async () => {
@@ -231,6 +238,70 @@ test('session end after work below the per-turn threshold still writes when it a
   expect(h.seen.asked.length).toBe(0)
   await h.end($)
   expect(h.seen.asked.length).toBe(1)
+})
+
+test('session end while a note is being written: the call is waited for, and its note is stored', async ($, on) => {
+  const h = engine(on, { gitRoot: ROOT, delayMs: 5_000 })
+  await h.turn($, 'Change', () => h.edit($, '/work/app/a.ts'))
+  expect(h.seen.asked.length).toBe(1)
+  let isEnded = false
+  const ending = $.session.end({ reason: 'other', sessionId: 'session-1', resume: { id: 'session-1' } } as never).then(() => (isEnded = true))
+  await h.clock.settle()
+  // The exit waits on the call in flight.
+  expect(isEnded).toBe(false)
+  await h.clock.advance(5_000)
+  await ending
+  expect((await h.notes($))[ROOT]!.note).toBe(NOTE)
+  // Nothing was left over, so no second call.
+  expect(h.seen.asked.length).toBe(1)
+})
+
+test('session end while a note is being written: the wait ends with the exit bound, without an error', async ($, on) => {
+  const h = engine(on, { gitRoot: ROOT, delayMs: 60_000 })
+  await h.turn($, 'Change', () => h.edit($, '/work/app/a.ts'))
+  await h.turn($, 'More', () => h.edit($, '/work/app/b.ts'))
+  const ending = $.session.end({ reason: 'other', sessionId: 'session-1', resume: { id: 'session-1' } } as never)
+  await h.clock.settle()
+  // The bound (a hook's 10 seconds under test) runs out long before the model answers.
+  await h.clock.advance(10_000)
+  await expect(ending).resolves.toBeDefined()
+  expect(h.seen.asked.length).toBe(1)
+  expect(await h.notes($)).toEqual({})
+  expect(h.seen.logs).toEqual([])
+})
+
+test('session end while a note is being written: work done meanwhile goes into one more note, within the bound', async ($, on) => {
+  const h = engine(on, { gitRoot: ROOT, delayMs: 3_000, answer: n => `Work: note ${n}.\nDone: x.\nNext: y.\nOpen problems: none` })
+  await h.turn($, 'First', () => h.edit($, '/work/app/one.ts'))
+  await h.turn($, 'Second', () => h.edit($, '/work/app/two.ts'))
+  expect(h.seen.asked.length).toBe(1)
+  const ending = $.session.end({ reason: 'other', sessionId: 'session-1', resume: { id: 'session-1' } } as never)
+  await h.clock.settle()
+  await h.clock.advance(3_000)
+  expect((await h.notes($))[ROOT]!.note).toContain('note 0')
+  expect(h.seen.asked.length).toBe(2)
+  expect(h.seen.asked[1]!.prompt).toContain('/work/app/two.ts')
+  expect(h.seen.asked[1]!.prompt).not.toContain('/work/app/one.ts')
+  // Its timeout is what is left of the bound, not the setting's 15 seconds.
+  expect(h.seen.asked[1]!.timeoutMs!).toBeLessThan(10_000)
+  await h.clock.advance(3_000)
+  await ending
+  expect((await h.notes($))[ROOT]!.note).toContain('note 1')
+  // The debounce set up no call of its own after the end.
+  await h.clock.advance(600_000)
+  expect(h.seen.asked.length).toBe(2)
+})
+
+test('/clear while a note is being written: what is left goes in once the call ends', async ($, on) => {
+  const h = engine(on, { gitRoot: ROOT, delayMs: 3_000 })
+  await h.turn($, 'First', () => h.edit($, '/work/app/one.ts'))
+  await h.turn($, 'Second', () => h.edit($, '/work/app/two.ts'))
+  await h.end($, 'clear')
+  await h.clock.advance(3_000)
+  expect(h.seen.asked.length).toBe(2)
+  expect(h.seen.asked[1]!.prompt).toContain('/work/app/two.ts')
+  await h.clock.advance(600_000)
+  expect(h.seen.asked.length).toBe(2)
 })
 
 test('/clear: the note is written off the exit bound, and the new session gets it', async ($, on) => {

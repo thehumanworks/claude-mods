@@ -125,6 +125,7 @@ export const SYSTEM = [
   'Done: what was done, most recent first.',
   'Next: the next concrete steps.',
   'Open problems: failures, doubts and questions still open, or "none".',
+  'Some work never shows in these lists (a file changed through a shell command is not listed as edited): write about the work itself, and never remark on what your input lacks or seems to contradict.',
   'Name files and commands where they help. No preamble, no closing remark, no code blocks. At most 1,200 characters.',
 ].join('\n')
 
@@ -161,14 +162,14 @@ export const NOTES_KEY = 'notes'
 /** Repositories kept; past this the note written longest ago goes. */
 export const MAX_REPOS = 50
 
-/** The notes as read from the store, anything malformed left out. */
+/** The notes as read from the store, each note cut to MAX_NOTE_CHARS, anything malformed left out. */
 export function readNotes(value: unknown): Notes {
   const notes: Notes = {}
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return notes
   for (const [root, entry] of Object.entries(value as Record<string, unknown>)) {
     const e = entry as Partial<Entry> | null
     if (e && typeof e.note === 'string' && typeof e.writtenAt === 'number') {
-      notes[root] = { note: e.note, writtenAt: e.writtenAt, model: String(e.model ?? ''), sessionId: String(e.sessionId ?? '') }
+      notes[root] = { note: clipEnd(e.note, MAX_NOTE_CHARS), writtenAt: e.writtenAt, model: String(e.model ?? ''), sessionId: String(e.sessionId ?? '') }
     }
   }
   return notes

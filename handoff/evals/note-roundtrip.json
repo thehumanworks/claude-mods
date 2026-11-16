@@ -1,0 +1,43 @@
+{
+  "name": "handoff-note-roundtrip",
+  "description": "Session 1 edits two files and exits; the note is written at the session's end and stored. Session 2 starts in the same repo and gets the [handoff] note once, at its first prompt.",
+  "setup": {
+    "git": true,
+    "files": {
+      "src/math.js": "export function add(a, b) {\n  return a + b\n}\n",
+      "src/strings.js": "export function trim(s) {\n  return s.trim()\n}\n"
+    }
+  },
+  "sessions": [
+    {
+      "name": "edit two files",
+      "model": "haiku",
+      "prompt": "Add an exported function subtract(a, b) that returns a - b to src/math.js, and an exported function shout(s) that returns s.toUpperCase() + '!' to src/strings.js. Use the Edit tool for both files. Do not run anything. When both edits are done, reply with one short line.",
+      "allowedTools": ["Read", "Edit"],
+      "options": { "minSecondsBetween": 0, "minTools": 1 },
+      "env": { "CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS": "20000" },
+      "debug": "hooks",
+      "assert": [
+        { "in": "repo", "path": "src/math.js", "matches": "function subtract" },
+        { "in": "repo", "path": "src/strings.js", "matches": "function shout" },
+        { "label": "no note is injected into the first session", "in": "attachments", "matches": "^\\[handoff\\]", "count": 0 },
+        { "label": "debug log: the note was written", "in": "debug", "matches": "handoff: note for {{repo}} written" },
+        { "label": "store holds a note for the temp repo", "in": "store", "plugin": "handoff", "matches": "\"{{repo}}\"[\\s\\S]*Work:" },
+        { "label": "the stored note names the work", "in": "store", "plugin": "handoff", "matches": "subtract|shout" }
+      ]
+    },
+    {
+      "name": "next session reads the note",
+      "model": "haiku",
+      "prompt": "Without using any tools, say in one sentence what was last done in this repository, from what you already know.",
+      "allowedTools": [],
+      "options": { "minSecondsBetween": 0, "minTools": 1 },
+      "assert": [
+        { "label": "[handoff] session-start note injected exactly once", "in": "attachments", "type": "hook_additional_context", "matches": "^\\[handoff\\] This session is starting\\. Here is the handoff note for this repository \\({{repo}}\\)", "count": 1 },
+        { "label": "no other [handoff] text anywhere in what reached the model", "in": "attachments", "matches": "\\[handoff\\]", "count": 1 },
+        { "label": "the note carries the work", "in": "attachments", "type": "hook_additional_context", "matches": "Work:[\\s\\S]*(subtract|shout)", "count": 1 },
+        { "label": "Claude used it", "in": "assistant", "matches": "subtract|shout", "flags": "i" }
+      ]
+    }
+  ]
+}

@@ -34,3 +34,5 @@ In the desktop app: click **+** next to the prompt box → **Plugins** → **Add
 ## Development
 
 CI (`.github/workflows/validate.yml`) runs `claude plugin validate` and `claude plugin test` on every mod listed in `.claude-plugin/marketplace.json`, for pull requests and pushes to main. It needs no secrets. A new mod is covered once it has a marketplace entry; to run the same checks locally use `claude plugin validate ./<mod>` and `claude plugin test ./<mod>`.
+
+Before merging a mod, run its live evals: `node scripts/live-eval.mjs <mod>` runs real Haiku sessions with the mod loaded and checks what reached the model. They need a signed-in Claude Code, so CI does not run them. See [EVALS.md](./EVALS.md).

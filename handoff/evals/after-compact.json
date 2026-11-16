@@ -1,0 +1,90 @@
+{
+  "name": "handoff-after-compact",
+  "description": "Session 1 writes the note as in handoff-note-roundtrip. Session 2, with async-compaction loaded beside it, gets the note at its first prompt, runs /compact as a follow-up turn, and gets the note once more at the next prompt, under the compaction wording.",
+  "setup": {
+    "git": true,
+    "files": {
+      "src/math.js": "export function add(a, b) {\n  return a + b\n}\n",
+      "src/strings.js": "export function trim(s) {\n  return s.trim()\n}\n"
+    }
+  },
+  "sessions": [
+    {
+      "name": "edit two files",
+      "model": "haiku",
+      "prompt": "Add an exported function subtract(a, b) that returns a - b to src/math.js, and an exported function shout(s) that returns s.toUpperCase() + '!' to src/strings.js. Use the Edit tool for both files. Do not run anything. When both edits are done, reply with one short line.",
+      "allowedTools": [
+        "Read",
+        "Edit"
+      ],
+      "options": {
+        "minSecondsBetween": 0,
+        "minTools": 1
+      },
+      "env": {
+        "CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS": "20000"
+      },
+      "debug": "hooks",
+      "assert": [
+        {
+          "label": "debug log: the note was written",
+          "in": "debug",
+          "matches": "handoff: note for {{repo}} written"
+        },
+        {
+          "label": "store holds a note for the temp repo",
+          "in": "store",
+          "plugin": "handoff",
+          "matches": "\"{{repo}}\"[\\s\\S]*Work:"
+        }
+      ]
+    },
+    {
+      "name": "prompt, /compact, prompt",
+      "model": "haiku",
+      "turns": [
+        "Without using any tools, reply with one short line: ready.",
+        "/compact",
+        "Without using any tools, say in one sentence what was last done in this repository."
+      ],
+      "allowedTools": [],
+      "options": {
+        "minSecondsBetween": 0,
+        "minTools": 1
+      },
+      "pluginDirs": [
+        "async-compaction"
+      ],
+      "timeoutSeconds": 400,
+      "assert": [
+        {
+          "in": "rows",
+          "type": "system",
+          "matches": "\"subtype\":\"compact_boundary\"",
+          "count": 1,
+          "label": "the /compact turn compacted"
+        },
+        {
+          "label": "session-start note once",
+          "in": "attachments",
+          "type": "hook_additional_context",
+          "matches": "^\\[handoff\\] This session is starting",
+          "count": 1
+        },
+        {
+          "label": "after-compaction note once",
+          "in": "attachments",
+          "type": "hook_additional_context",
+          "matches": "^\\[handoff\\] The conversation was just compacted; the summary above stays as it is, and this note is added beside it\\.",
+          "count": 1
+        },
+        {
+          "label": "[handoff] reached the model exactly twice",
+          "in": "attachments",
+          "matches": "\\[handoff\\]",
+          "count": 2
+        }
+      ]
+    }
+  ]
+}

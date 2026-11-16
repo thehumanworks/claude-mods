@@ -1,0 +1,24 @@
+{
+  "name": "output-shaper-large-output",
+  "description": "Three Bash calls: 23,892 characters (seq 1 5000, its last newline dropped) (over the 20,000 threshold, under Claude Code's 30,000 inline limit: the mod saves it), 168,894 characters (Claude Code saves it; the mod reuses that file), and 50 lines (left alone).",
+  "setup": { "git": true, "files": { "README.md": "scratch repo\n" } },
+  "sessions": [
+    {
+      "name": "big, bigger, small",
+      "model": "haiku",
+      "prompt": "Run exactly these three shell commands with the Bash tool, each as its own separate Bash call, in this order, with nothing added to them: `seq 1 5000`, then `seq 1 30000`, then `seq 1 50`. Do not read any files. After the third, reply with one short line.",
+      "allowedTools": ["Bash(seq:*)"],
+      "assert": [
+        { "label": "5,000-line output shaped: head, marker with counts", "in": "toolResults", "matches": "^1\\n2\\n3\\n[\\s\\S]*\\[output-shaper: lines 41 to 4,940 \\(4,900 lines\\) left out here; 5,000 lines, 23,892 characters in all\\]\\n4941\\n", "count": 1 },
+        { "label": "5,000-line output: path is the mod's own saved file", "in": "toolResults", "matches": "\\n5000\\n\\[output-shaper: the whole output is in {{repo}}/\\.claude/output-shaper/[^/]+/toolu_\\w+\\.txt\\. To see more, Grep", "count": 1 },
+        { "label": "30,000-line output shaped in place of Claude Code's preview", "in": "toolResults", "matches": "\\[output-shaper: lines 41 to 29,940 \\(29,900 lines\\) left out here; 30,000 lines, [\\d,]+ (characters|bytes) in all\\]", "count": 1 },
+        { "label": "30,000-line output: path is Claude Code's tool-results file", "in": "toolResults", "matches": "\\n30000\\n\\[output-shaper: the whole output is in \\S+/tool-results/\\S+\\. To see more", "count": 1 },
+        { "label": "no <persisted-output> preview reached the model", "in": "toolResults", "notMatches": "<persisted-output>" },
+        { "label": "50-line output left alone", "in": "toolResults", "matches": "^1\\n2\\n[\\s\\S]*\\n49\\n50$", "notMatches": "output-shaper", "count": 1 },
+        { "label": "the mod saved exactly one output file", "in": "repo", "path": ".claude/output-shaper/*/*.txt", "count": 1 },
+        { "label": "saved file holds the whole output", "in": "repo", "path": ".claude/output-shaper/*/*.txt", "matches": "^1\\n[\\s\\S]*\\n2500\\n[\\s\\S]*\\n5000\\n?$" },
+        { "in": "repo", "path": ".claude/output-shaper/.gitignore", "matches": "^\\*" }
+      ]
+    }
+  ]
+}

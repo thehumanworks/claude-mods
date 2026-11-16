@@ -21,6 +21,18 @@ jobs:
           echo "mods=$mods" >> "$GITHUB_OUTPUT"
           echo "Mods: $mods"
 
+  listings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Listings are up to date
+        run: node scripts/gen-listings.mjs --check
+      - name: Generator tests
+        run: node --test "scripts/*.test.mjs"
+
   check:
     needs: discover
     runs-on: ubuntu-latest

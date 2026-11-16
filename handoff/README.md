@@ -81,7 +81,7 @@ Set on the screen the install shows, and afterwards in `/config`.
   CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS=20000 claude -p "..."
   ```
 
-  The exit then waits up to that long, and only while a note is being written or is due. In an interactive session that goes on for a while after a turn, the note is written long before the exit, and none of this matters.
+  The exit then waits up to about 10 seconds (Claude Code's per-hook limit, whatever the variable is set to), and only while a note is being written or is due. In an interactive session that goes on for a while after a turn, the note is written long before the exit, and none of this matters.
 - After a compaction in the middle of a long turn, the note waits for your next prompt.
 - Two sessions in the same repository share one note. The last to write wins.
 - The note is a small model's summary. Claude is told to trust the code where they differ.

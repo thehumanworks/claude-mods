@@ -46,7 +46,7 @@ The exit code is 0 when every assertion passed, 1 when any failed, and 2 when a 
 
 ## Cost
 
-Haiku by default; Sonnet when a scenario asks for it. **Opus, Fable and Mythos are refused**: a session's `model` must be `haiku` or `sonnet`, a scenario whose plugin options, settings or env mention `opus`, `fable` or `mythos` (a mod's own `model` setting, `ANTHROPIC_MODEL`) does not run, and a `/model` turn is refused. Variables inherited from your shell that remap a model alias (`ANTHROPIC_MODEL`, `ANTHROPIC_DEFAULT_*_MODEL`, `CLAUDE_CODE_SUBAGENT_MODEL`) are removed from the child's environment, and each session only has the tools its scenario lists, so there is no Agent tool to start a subagent on another model.
+Haiku by default; Sonnet when a scenario asks for it. **Opus, Fable and Mythos are refused**: a session's `model` must be `haiku` or `sonnet`, a scenario whose plugin options, settings or env mention `opus`, `fable` or `mythos` (a mod's own `model` setting, `ANTHROPIC_MODEL`) does not run, and a `/model` turn is refused. Variables inherited from your shell that remap a model alias (`ANTHROPIC_MODEL`, `ANTHROPIC_DEFAULT_*_MODEL`, `CLAUDE_CODE_SUBAGENT_MODEL`) are removed from the child's environment, and each session only has the tools its scenario lists; `Agent`, `Task` and `Skill` are refused there, so nothing can start work on another model.
 
 A scenario on Haiku costs a few cents at most; the three here reported well under one cent each. The cost printed is what Claude Code reports for the session (`total_cost_usd`); model calls a mod makes itself (the handoff note) count in `/cost` but may not be in that figure.
 

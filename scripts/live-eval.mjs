@@ -127,6 +127,8 @@ function loadScenario(file) {
     if (!Array.isArray(sess.turns) || sess.turns.length === 0 || sess.turns.some(t => typeof t !== 'string')) problems.push(`${at}: needs "prompt" (a string) or "turns" (strings; a turn may be a slash command such as "/compact")`)
     // A `/model` turn would switch the session to another model mid-run.
     for (const t of Array.isArray(sess.turns) ? sess.turns : []) if (typeof t === 'string' && /^\s*\/model\b/.test(t)) problems.push(`${at}: a "/model" turn is refused; set "model" instead`)
+    // Agent/Task take a model parameter and Skill can name one in its frontmatter: either would run on another model.
+    for (const t of sess.allowedTools ?? []) if (/^\s*(Agent|Task|Skill)\b/.test(String(t))) problems.push(`${at}: allowedTools "${t}" is refused: it can start work on another model`)
     if (sess.settingSources !== undefined) problems.push(`${at}: "settingSources" is not supported: sessions always run with --setting-sources '' so your own settings never load`)
     scan(`${at}.settings`, sess.settings)
     scan(`${at}.options`, sess.options)

@@ -1,0 +1,14 @@
+{
+  "name": "worktree-coach",
+  "version": "0.1.0",
+  "description": "When Claude Code refuses a worktree-isolated agent's Bash command as unverifiable, tells Claude which part of the command tripped the check and gives the concrete rewrite (separate commands, git -C <worktree>)",
+  "author": { "name": "Tomas Roda" },
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Worktree coach",
+      "description": "Off: refused commands reach Claude with Claude Code's text only, and no note is added.",
+      "default": true
+    }
+  }
+}

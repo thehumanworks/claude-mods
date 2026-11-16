@@ -48,6 +48,11 @@
       "name": "efficiency",
       "source": "./efficiency",
       "description": "Records per repository, across sessions, where Claude Code wastes context or calls (MCP servers loaded but never called, failed and repeated calls, large results, compactions), and /efficiency ranks it with the exact settings file and key to change; on /efficiency only, opus adds up to 5 recommendations drawn from those fixes"
+    },
+    {
+      "name": "worktree-coach",
+      "source": "./worktree-coach",
+      "description": "When Claude Code refuses a worktree-isolated agent's Bash command as unverifiable, tells Claude which part of the command tripped the check and gives the concrete rewrite (separate commands, git -C <worktree>)"
     }
   ]
 }

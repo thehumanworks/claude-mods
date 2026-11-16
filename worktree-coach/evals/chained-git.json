@@ -1,0 +1,38 @@
+{
+  "name": "worktree-coach-chained-git",
+  "description": "A session isolated in a worktree (claude --worktree) runs `cd src && git log -1 --oneline $(git rev-parse --abbrev-ref HEAD)`, which Claude Code refuses as too complex to verify. With the mod on, Claude reads the note (trigger and the `git -C` rewrite) and recovers with git -C; with it off, the refusal arrives without a note.",
+  "setup": {
+    "files": {
+      "src/app.js": "export const answer = 42\n",
+      "README.md": "# demo\n"
+    }
+  },
+  "sessions": [
+    {
+      "name": "mod on",
+      "model": "haiku",
+      "worktree": "coach-on",
+      "prompt": "Run exactly this Bash command, unchanged, as your first tool call: cd src && git log -1 --oneline $(git rev-parse --abbrev-ref HEAD)\nIf it is refused, follow the guidance that comes with the refusal to get that log line, then reply with one line saying what you ran.",
+      "allowedTools": ["Bash"],
+      "assert": [
+        { "in": "toolResults", "matches": "This session is isolated in the worktree .*too complex to verify that it stays inside the worktree", "label": "Claude Code refused the chained git command" },
+        { "in": "transcript", "matches": "worktree-coach: Claude Code could not parse this command", "label": "the note reached the model" },
+        { "in": "transcript", "matches": "Likely trigger: the command substitution `\\$\\(git rev-parse --abbrev-ref HEAD\\)`.*the `cd src` chained in front of git", "label": "the note names the trigger" },
+        { "in": "transcript", "matches": "1\\. git -C [^ ]*coach-on/src rev-parse --abbrev-ref HEAD", "label": "the note gives the git -C rewrite" },
+        { "in": "rows", "type": "assistant", "matches": "\"command\":\"git -C [^\"]*src[^\"]* (rev-parse|log)", "label": "Claude recovered with git -C" }
+      ]
+    },
+    {
+      "name": "mod off",
+      "model": "haiku",
+      "worktree": "coach-off",
+      "options": { "enabled": false },
+      "prompt": "Run exactly this Bash command, unchanged, as your only tool call: cd src && git log -1 --oneline $(git rev-parse --abbrev-ref HEAD)\nThen reply with one line saying whether it ran.",
+      "allowedTools": ["Bash"],
+      "assert": [
+        { "in": "toolResults", "matches": "too complex to verify that it stays inside the worktree", "label": "Claude Code refused the chained git command" },
+        { "in": "transcript", "notMatches": "worktree-coach:", "label": "no note when disabled" }
+      ]
+    }
+  ]
+}

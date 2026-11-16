@@ -14,6 +14,7 @@ Mods for Claude Code.
 | [output-shaper](./output-shaper) | When a Bash command prints a lot, Claude reads its first and last lines, the line and character counts, and the path of the whole output with a hint to Grep or Read it |
 | [handoff](./handoff) | Keeps a short handoff note per repository (the work, what was done, what is next, open problems), written by claude-haiku-5-5 after turns that do real work, and hands it to Claude at session start and after each compaction |
 | [efficiency](./efficiency) | Records per repository, across sessions, where Claude Code wastes context or calls (MCP servers loaded but never called, failed and repeated calls, large results, compactions), and /efficiency ranks it with the exact settings file and key to change; on /efficiency only, opus adds up to 5 recommendations drawn from those fixes |
+| [report-diet](./report-diet) | When a subagent's report reaching the agent that started it is long, the whole text is saved to a file in the system temp folder and the parent reads its start, its end and the file's path, so its context stays small |
 | [worktree-coach](./worktree-coach) | When Claude Code refuses a worktree-isolated agent's Bash command as unverifiable, adds a short note with Claude Code's reason and remedy, the worktree path and fixed tips for running git there |
 <!-- mods:end -->
 

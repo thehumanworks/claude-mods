@@ -50,6 +50,11 @@
       "description": "Records per repository, across sessions, where Claude Code wastes context or calls (MCP servers loaded but never called, failed and repeated calls, large results, compactions), and /efficiency ranks it with the exact settings file and key to change; on /efficiency only, opus adds up to 5 recommendations drawn from those fixes"
     },
     {
+      "name": "report-diet",
+      "source": "./report-diet",
+      "description": "When a subagent's report reaching the agent that started it is long, the whole text is saved to a file in the system temp folder and the parent reads its start, its end and the file's path, so its context stays small"
+    },
+    {
       "name": "worktree-coach",
       "source": "./worktree-coach",
       "description": "When Claude Code refuses a worktree-isolated agent's Bash command as unverifiable, adds a short note with Claude Code's reason and remedy, the worktree path and fixed tips for running git there"

@@ -12,7 +12,7 @@
     {
       "name": "async-compaction",
       "source": "./async-compaction",
-      "description": "Background compaction: a cheap model summarizes the conversation ahead of time, and at the compaction limit the summary is swapped in with the latest messages kept raw"
+      "description": "Asynchronous (background) compaction: a cheap model summarizes the conversation ahead of time, and at the compaction limit the summary is swapped in with the latest messages kept raw"
     },
     {
       "name": "loop-breaker",
@@ -22,7 +22,7 @@
     {
       "name": "context-gauge",
       "source": "./context-gauge",
-      "description": "Context used against the auto-compact limit on the status line, and a short note to Claude when it passes 50, 75 and 90%"
+      "description": "The context's fill against Claude Code's auto-compact limit on the status line, and a short note to Claude when it passes 50, 75 and 90%"
     },
     {
       "name": "edit-check",
@@ -32,7 +32,7 @@
     {
       "name": "test-gate",
       "source": "./test-gate",
-      "description": "When Claude ends a turn after editing code without running a test or check, claude-haiku-5-5 decides whether it should, and if so the turn goes on once with a note asking Claude to run the tests or say why not"
+      "description": "When Claude ends a turn after editing code without running a test or check, a small model decides whether it should, and if so the turn goes on once with a note asking Claude to run the tests or say why not"
     },
     {
       "name": "output-shaper",
@@ -42,7 +42,7 @@
     {
       "name": "handoff",
       "source": "./handoff",
-      "description": "Keeps a short handoff note per repository (the work, what was done, what is next, open problems), written by claude-haiku-5-5 after turns that do real work, and hands it to Claude at session start and after each compaction"
+      "description": "Keeps a short handoff note per repository (the work, what was done, what is next, open problems), written by a small model after turns that do real work, and hands it to Claude at session start and after each compaction"
     }
   ]
 }

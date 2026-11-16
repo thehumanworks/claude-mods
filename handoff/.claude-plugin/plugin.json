@@ -1,7 +1,7 @@
 {
   "name": "handoff",
   "version": "0.1.0",
-  "description": "Keeps a short handoff note per repository (the work, what was done, what is next, open problems), written by a small model after turns that do real work, and hands it to Claude at session start and after each compaction",
+  "description": "Keeps a short handoff note per repository (the work, what was done, what is next, open problems), written by claude-haiku-5-5 after turns that do real work, and hands it to Claude at session start and after each compaction",
   "author": {
     "name": "Tomas Roda"
   },

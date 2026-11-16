@@ -199,7 +199,8 @@ export function hasBashPreToolUse(hooks: unknown): boolean {
     const m = matcher.trim()
     if (m === '*' || /bash/i.test(m)) return true
     try {
-      return new RegExp(`^(?:${m})$`).test('Bash')
+      // Unanchored, as Claude Code tests a matcher that is not a plain name: `B.` and `^B` fire for Bash.
+      return new RegExp(m).test('Bash')
     } catch {
       return true
     }

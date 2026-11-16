@@ -233,7 +233,7 @@ test('on, with no PreToolUse hook in the settings: the command is wrapped', { op
 })
 
 test('on, but a PreToolUse hook in the settings fires for Bash: never wrapped, said once in the debug log', { options: ON }, async ($, on) => {
-  const guards = [{ matcher: 'Bash', hooks: [] }, { matcher: '*', hooks: [] }, { hooks: [] }, { matcher: 'Edit|Bash', hooks: [] }, { matcher: '.*', hooks: [] }]
+  const guards = [{ matcher: 'Bash', hooks: [] }, { matcher: '*', hooks: [] }, { hooks: [] }, { matcher: 'Edit|Bash', hooks: [] }, { matcher: '.*', hooks: [] }, { matcher: 'B.', hooks: [] }, { matcher: '^B', hooks: [] }]
   const options: Options = {}
   const { seen } = engine(on, () => failed(FAILING), options)
   for (const [i, guard] of guards.entries()) {

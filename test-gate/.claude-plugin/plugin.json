@@ -1,7 +1,7 @@
 {
   "name": "test-gate",
   "version": "0.1.0",
-  "description": "When Claude ends a turn after editing code without running a test or check, a small model decides whether it should, and if so the turn goes on once with a note asking Claude to run the tests or say why not",
+  "description": "When Claude ends a turn after editing code without running a test or check, claude-haiku-5-5 decides whether it should, and if so the turn goes on once with a note asking Claude to run the tests or say why not",
   "author": {
     "name": "Tomas Roda"
   },

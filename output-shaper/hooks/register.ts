@@ -6,6 +6,16 @@ import type { EngineInterface, Register, ToolCallResult } from 'claude-code'
 import {
   DEFAULT_SAVE_DIR,
   errorNote,
+  hasBashPreToolUse,
+  keptNote,
+  lostTheEnd,
+  TAIL_FILE_MAX_AGE_MS,
+  TAIL_FILE_RE,
+  TAIL_FILES_MAX,
+  TAIL_NOTE_MAX_CHARS,
+  TAIL_SUBDIR,
+  tailFileNameFor,
+  tailNote,
   EXCERPT_BUDGET_MAX,
   excerpt,
   fileNameFor,
@@ -20,6 +30,7 @@ import {
   type Config,
   type Whole,
 } from './shape.js'
+import { skipReason, wrapCommand } from './wrap.js'
 
 type $ = EngineInterface
 type BashRecord = Record<string, unknown> & { stdout?: unknown; stderr?: unknown }
@@ -30,11 +41,31 @@ export const FS_READ_MAX_BYTES = 4 * 1024 * 1024
 /** Fields of Bash's record that make Claude Code show its own preview in place of stdout. */
 const PREVIEW_FIELDS = ['persistedOutputPath', 'persistedOutputSize', 'stdoutHoldsOutputEnd'] as const
 
-type Runtime = { config: Config; dir?: string }
+/** A model's Bash call whose command line was wrapped to copy its whole output to `file`. */
+type Tail = {
+  original: string
+  wrapped: string
+  file: string
+  /** Set by the tool.check hook when the wrapped line was not allowed: the call runs again as written. */
+  runAsWritten?: boolean
+}
+
+type Runtime = {
+  config: Config
+  dir?: string
+  /** Where the wrap's files go. */
+  tailDir?: string
+  /** Wrapped calls in flight, by tool_use_id. */
+  tails: Map<string, Tail>
+  /** When the wrap's folder was last cleaned, ms since the epoch. */
+  cleanedAt?: number
+}
+/** The folder is cleaned at most this often. */
+const CLEAN_EVERY_MS = 10 * 60 * 1000
 
 export const register: Register = (on, options) => {
   const { config, problems } = resolveConfig(options)
-  const rt: Runtime = { config }
+  const rt: Runtime = { config, tails: new Map() }
 
   if (problems.length > 0) {
     on('session.start', async ($, e, next) => {
@@ -49,18 +80,190 @@ export const register: Register = (on, options) => {
     // origin decides; a subagent's output goes to the subagent, whose own budget is its business.
     const isModelCall = next.origin.plugin === 'engine' && typeof e.tool_use_id === 'string' && e.tool_use_id !== ''
     if (!isModelCall || e.agentId !== undefined) return next(e)
-    const ran = await next(e)
+    const toolUseId = e.tool_use_id!
+    const tail = config.keepFailingTail ? await planTail($, rt, toolUseId, e).catch(err => void debug($, `not wrapped: ${messageOf(err)}`)) : undefined
+    let ran = await next(tail === undefined ? e : { ...e, command: tail.wrapped })
+    if (tail?.runAsWritten === true && !wasRefused(ran, rerunReason(toolUseId))) {
+      // A hook above this one answered over the refusal and the wrapped line ran: never run it twice.
+      tail.runAsWritten = false
+    }
+    if (tail?.runAsWritten === true) {
+      // The wrapped line was refused where the command itself is allowed: run it as the model wrote it.
+      rt.tails.delete(toolUseId)
+      await removeFiles($, [tail.file])
+      ran = await next(e)
+    }
     try {
       if (ran.deny !== undefined) return ran
-      if (ran.isError === true) return await noteOnError($, rt, ran)
-      return (await shapeAnswer($, rt, e.tool_use_id!, ran)) ?? ran
+      if (ran.isError === true) {
+        const noted = await noteOnError($, rt, ran)
+        return tail === undefined || tail.runAsWritten === true ? noted : await tailOnError($, rt, tail, noted, noted !== ran)
+      }
+      const shaped = await shapeAnswer($, rt, toolUseId, ran)
+      if (tail === undefined || tail.runAsWritten === true) return shaped ?? ran
+      return await tailOnSuccess($, rt, tail, ran, shaped)
     } catch (err) {
       debug($, `left as it was: ${messageOf(err)}`)
       return ran
+    } finally {
+      if (tail !== undefined) {
+        rt.tails.delete(toolUseId)
+        await cleanTails($, rt).catch(err => debug($, `cleaning ${rt.tailDir ?? 'the tail folder'}: ${messageOf(err)}`))
+      }
     }
   })
-    // A failure of this hook leaves the call as Claude Code answers it.
+    // A failure of this hook leaves the call as Claude Code answers it: unwrapped when it had not run yet.
     .catch(($, e, next) => next(e))
+
+  if (config.keepFailingTail) {
+    // The wrapped line is a different command line to the permission check. A call is only wrapped when the
+    // command as written is allowed with nobody asked; here the wrapped line gets the same answer, or, when
+    // anything stronger than a rule (a deny, a hook's ask) holds it, the call runs again as written.
+    on('tool.check', { tool: 'Bash' }, async ($, e, next) => {
+      const tail = e.tool_use_id === undefined ? undefined : rt.tails.get(e.tool_use_id)
+      const input = e.input as { command?: unknown } | undefined
+      if (tail === undefined || next.origin.plugin !== 'engine' || e.agentId !== undefined || input?.command !== tail.wrapped) return next(e)
+      const verdict = await next(e)
+      if (verdict.decision === 'allow') return verdict
+      if (verdict.decision === 'ask' && verdict.hook === undefined && verdict.plugin === undefined && verdict.setting === undefined) {
+        return { decision: 'allow' as const, reason: `${$name}: the command it wraps is allowed as written` }
+      }
+      tail.runAsWritten = true
+      return { decision: 'deny' as const, reason: rerunReason(e.tool_use_id!) }
+    })
+      .catch(($, e, next) => next(e))
+  }
+}
+
+/** The refusal this mod gives a wrapped line it will run again as written; the call's id makes it its own. */
+const rerunReason = (toolUseId: string): string => `${$name}: the wrapped command was not allowed; it runs again as written (${toolUseId})`
+
+/** Whether the call was refused with `reason`, so nothing ran; a result the tool produced is never taken for one. */
+function wasRefused(ran: ToolCallResult<'Bash'>, reason: string): boolean {
+  if (ran.deny !== undefined) return ran.deny.includes(reason)
+  return ran.isError === true && typeof ran.text === 'string' && ran.text.includes(reason)
+}
+
+/**
+ * Wraps the command line when it is safe to, so its whole output is also
+ * written to a file of its own. Undefined leaves the call as it is.
+ */
+async function planTail($: $, rt: Runtime, toolUseId: string, e: { command: string; run_in_background?: boolean }): Promise<Tail | undefined> {
+  if (e.run_in_background === true) return undefined
+  const reason = skipReason(e.command)
+  if (reason !== undefined) {
+    debug($, `not wrapped: ${reason}`)
+    return undefined
+  }
+  // The sandbox decides by the command line too (its excluded commands), and may not let the shell write the file.
+  const sandbox = (await $.settings.read({ key: 'sandbox' }).catch(() => undefined)) as { enabled?: unknown } | undefined
+  if (sandbox?.enabled === true) return undefined
+  // A PreToolUse hook of the person's that fires for Bash may guard by the command line (`^git push`), and would
+  // read the wrap instead: never weaken it. Settings files only (user, project, local, flag, policy, merged); other
+  // plugins' hooks cannot be seen through the API.
+  const hooks = await $.settings.read({ key: 'hooks' }).catch(() => ({ PreToolUse: [{}] }))
+  if (hasBashPreToolUse(hooks)) {
+    debug($, 'not wrapped: a PreToolUse hook in the settings fires for Bash and may read the command line')
+    return undefined
+  }
+  // Only a command the session would run with nobody asked: a person is never shown the wrapped line.
+  const { decision } = await $.tool.check({ tool: 'Bash', input: { command: e.command } })
+  if (decision !== 'allow') {
+    debug($, `not wrapped: the command as written is not allowed outright (${decision})`)
+    return undefined
+  }
+  const dir = await tailDir($, rt)
+  if (!isAbsolute(dir) || !dir.startsWith('/')) return undefined
+  const file = joinPath(dir, tailFileNameFor(toolUseId))
+  const wrapped = wrapCommand(e.command, file)
+  // The shell must read both as it reads the command, or the command runs as written.
+  const [asWritten, asWrapped] = await Promise.all([e.command, wrapped].map(script => $.process.run(['bash', '-n', '-c', script], { timeoutMs: 5_000 })))
+  if (asWritten?.exitCode !== 0 || asWrapped?.exitCode !== 0) {
+    debug($, `not wrapped: bash -n ${asWritten?.exitCode !== 0 ? 'refuses the command' : 'refuses the wrap'}`)
+    return undefined
+  }
+  await $.fs.write(file, '')
+  const tail: Tail = { original: e.command, wrapped, file }
+  rt.tails.set(toolUseId, tail)
+  return tail
+}
+
+/**
+ * A failing wrapped call: when Claude Code cut its output and the real end was
+ * lost, the end and the path are added as context. Otherwise the file goes.
+ */
+async function tailOnError($: $, rt: Runtime, tail: Tail, ran: ToolCallResult<'Bash'>, isNoted: boolean): Promise<ToolCallResult<'Bash'>> {
+  const text = typeof ran.text === 'string' ? ran.text : typeof ran.result === 'string' ? ran.result : ''
+  const read = isNoted ? undefined : await readTail($, tail, rt.config)
+  if (read === undefined || !lostTheEnd(text, read.whole.size, read.lines)) {
+    await removeFiles($, [tail.file])
+    return ran
+  }
+  const ex = excerpt(read.lines, 0, rt.config.tailLines, Math.min(budgetOf(rt.config), TAIL_NOTE_MAX_CHARS))
+  return { ...ran, context: [...(ran.context ?? []), tailNote(ex, read.whole)] } as ToolCallResult<'Bash'>
+}
+
+/**
+ * A wrapped call that did not fail: its file goes, unless the output was cut
+ * and no other copy is kept, when its path is added as context.
+ */
+async function tailOnSuccess($: $, rt: Runtime, tail: Tail, ran: ToolCallResult<'Bash'>, shaped: ToolCallResult<'Bash'> | undefined): Promise<ToolCallResult<'Bash'>> {
+  const answer = shaped ?? ran
+  const record = ran.result as unknown as BashRecord | undefined
+  // A command moved to the background is still writing its file; the cleanup takes it later.
+  if (record !== null && typeof record === 'object' && record.backgroundTaskId !== undefined) return answer
+  const hasCopy = shaped !== undefined || (typeof record?.persistedOutputPath === 'string' && record.persistedOutputPath !== '')
+  const read = hasCopy ? undefined : await readTail($, tail, rt.config)
+  const shown = typeof record?.stdout === 'string' ? `${record.stdout}${typeof record.stderr === 'string' ? record.stderr : ''}` : (ran.text ?? '')
+  if (read === undefined || !lostTheEnd(shown, read.whole.size, read.lines)) {
+    await removeFiles($, [tail.file])
+    return answer
+  }
+  return { ...answer, context: [...(answer.context ?? []), keptNote(read.whole)] } as ToolCallResult<'Bash'>
+}
+
+/** The wrap's file, read like a saved one; only a plain file, never a link put in its place. */
+async function readTail($: $, tail: Tail, config: Config): Promise<{ lines: string[]; whole: Whole } | undefined> {
+  const stat = await $.fs.stat(tail.file).catch(() => undefined)
+  if (stat === undefined || stat.kind !== 'file' || stat.isLink === true || stat.size === 0) return undefined
+  return readSaved($, tail.file, config)
+}
+
+/** Where the wrap's files go: `tails` under the default folder, or the folder the person chose. */
+async function tailDir($: $, rt: Runtime): Promise<string> {
+  if (rt.tailDir === undefined) {
+    const root = await $.session.root()
+    if (rt.config.saveDir === '') {
+      const base = await defaultBase($, root)
+      rt.tailDir = joinPath(base, TAIL_SUBDIR)
+    } else rt.tailDir = toAbs(root, rt.config.saveDir)
+  }
+  return rt.tailDir
+}
+
+/**
+ * Removes the wrap's old files: past TAIL_FILE_MAX_AGE_MS, and past the newest
+ * TAIL_FILES_MAX. Only `tail-<id>.txt` files, and never one a call in flight
+ * writes. At most once every CLEAN_EVERY_MS.
+ */
+async function cleanTails($: $, rt: Runtime): Promise<void> {
+  const now = Date.now()
+  if (rt.tailDir === undefined || (rt.cleanedAt !== undefined && now - rt.cleanedAt < CLEAN_EVERY_MS)) return
+  rt.cleanedAt = now
+  const inFlight = new Set([...rt.tails.values()].map(t => t.file))
+  const entries = (await $.fs.list(rt.tailDir).catch(() => []))
+    .filter(f => f.kind === 'file' && !f.isLink && TAIL_FILE_RE.test(f.name))
+    .map(f => ({ path: joinPath(rt.tailDir!, f.name), mtimeMs: f.mtimeMs }))
+    .filter(f => !inFlight.has(f.path))
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)
+  const old = entries.filter((f, i) => i >= TAIL_FILES_MAX || now - f.mtimeMs > TAIL_FILE_MAX_AGE_MS)
+  await removeFiles($, old.map(f => f.path))
+}
+
+async function removeFiles($: $, paths: readonly string[]): Promise<void> {
+  if (paths.length === 0) return
+  const r = await $.process.run(['rm', '-f', '--', ...paths], { timeoutMs: 10_000 }).catch(() => undefined)
+  if (r?.exitCode !== 0) debug($, `could not remove ${paths.join(', ')}`)
 }
 
 /**
@@ -174,17 +377,24 @@ async function readSaved($: $, path: string, config: Config): Promise<{ lines: s
 async function savePath($: $, rt: Runtime, toolUseId: string): Promise<string> {
   if (rt.dir === undefined) {
     const root = await $.session.root()
-    const toAbs = (dir: string) => (isAbsolute(dir) ? dir : dir === '.' ? root : joinPath(root, dir.replace(/^\.[\\/]/, '')))
     if (rt.config.saveDir === '') {
-      const base = toAbs(DEFAULT_SAVE_DIR)
-      const ignore = joinPath(base, '.gitignore')
-      if (!(await $.fs.exists(ignore))) await $.fs.write(ignore, '*\n')
+      const base = await defaultBase($, root)
       const session = (await $.session.id()).replace(/[^A-Za-z0-9_-]/g, '_') || 'session'
       rt.dir = joinPath(base, session)
-    } else rt.dir = toAbs(rt.config.saveDir)
+    } else rt.dir = toAbs(root, rt.config.saveDir)
   }
   return joinPath(rt.dir, fileNameFor(toolUseId))
 }
+
+/** The default folder in the session's folder, kept out of git by a `.gitignore` of its own. */
+async function defaultBase($: $, root: string): Promise<string> {
+  const base = toAbs(root, DEFAULT_SAVE_DIR)
+  const ignore = joinPath(base, '.gitignore')
+  if (!(await $.fs.exists(ignore))) await $.fs.write(ignore, '*\n')
+  return base
+}
+
+const toAbs = (root: string, dir: string): string => (isAbsolute(dir) ? dir : dir === '.' ? root : joinPath(root, dir.replace(/^\.[\\/]/, '')))
 
 /** The most the kept lines may take: the threshold, held under Claude Code's own inline limit. */
 const budgetOf = (config: Config): number => Math.min(config.threshold, EXCERPT_BUDGET_MAX)

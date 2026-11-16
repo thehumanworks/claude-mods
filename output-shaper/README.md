@@ -117,7 +117,7 @@ A command is **never wrapped** (it runs exactly as written) when any of these ho
 - `bash -n` refuses the command or its wrap, the command is over 20,000 characters, or the sandbox is on (its excluded commands are matched by command line).
 - The session would not run the command as written with nobody asked (`$.tool.check` says anything but `allow`). So a permission prompt only ever shows the command Claude wrote.
 
-Permissions: Claude Code checks the wrapped line, which a rule such as `Bash(npm test:*)` does not match. Since the command itself was allowed, the mod answers the same for the wrapped line when the check would only ask; if something stronger refuses the wrapped line (a deny rule, a hook's ask or deny), the call runs again as Claude wrote it. The transcript and Claude both keep the command as Claude wrote it.
+Permissions: Claude Code checks the wrapped line, which a rule such as `Bash(npm test:*)` does not match. Since the command itself was allowed, the mod answers the same for the wrapped line when the check would only ask; if something stronger refuses the wrapped line (a deny rule, a hook's ask or deny, an option's own ask such as `permissions.blockReadsOutsideWorkingDirectories`), the call runs again as Claude wrote it, and only when that refusal stood: if a hook placed above the mod answers over it and the wrapped line runs, the command is not run a second time. The transcript and Claude both keep the command as Claude wrote it.
 
 ## Limits
 

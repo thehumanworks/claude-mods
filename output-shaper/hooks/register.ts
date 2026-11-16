@@ -82,6 +82,10 @@ export const register: Register = (on, options) => {
     const toolUseId = e.tool_use_id!
     const tail = config.keepFailingTail ? await planTail($, rt, toolUseId, e).catch(err => void debug($, `not wrapped: ${messageOf(err)}`)) : undefined
     let ran = await next(tail === undefined ? e : { ...e, command: tail.wrapped })
+    if (tail?.runAsWritten === true && !wasRefused(ran, rerunReason(toolUseId))) {
+      // A hook above this one answered over the refusal and the wrapped line ran: never run it twice.
+      tail.runAsWritten = false
+    }
     if (tail?.runAsWritten === true) {
       // The wrapped line was refused where the command itself is allowed: run it as the model wrote it.
       rt.tails.delete(toolUseId)
@@ -120,14 +124,23 @@ export const register: Register = (on, options) => {
       if (tail === undefined || next.origin.plugin !== 'engine' || e.agentId !== undefined || input?.command !== tail.wrapped) return next(e)
       const verdict = await next(e)
       if (verdict.decision === 'allow') return verdict
-      if (verdict.decision === 'ask' && verdict.hook === undefined && verdict.plugin === undefined) {
+      if (verdict.decision === 'ask' && verdict.hook === undefined && verdict.plugin === undefined && verdict.setting === undefined) {
         return { decision: 'allow' as const, reason: `${$name}: the command it wraps is allowed as written` }
       }
       tail.runAsWritten = true
-      return { decision: 'deny' as const, reason: `${$name}: the wrapped command was not allowed; it runs again as written` }
+      return { decision: 'deny' as const, reason: rerunReason(e.tool_use_id!) }
     })
       .catch(($, e, next) => next(e))
   }
+}
+
+/** The refusal this mod gives a wrapped line it will run again as written; the call's id makes it its own. */
+const rerunReason = (toolUseId: string): string => `${$name}: the wrapped command was not allowed; it runs again as written (${toolUseId})`
+
+/** Whether the call was refused with `reason`, so nothing ran; a result the tool produced is never taken for one. */
+function wasRefused(ran: ToolCallResult<'Bash'>, reason: string): boolean {
+  if (ran.deny !== undefined) return ran.deny.includes(reason)
+  return ran.isError === true && typeof ran.text === 'string' && ran.text.includes(reason)
 }
 
 /**

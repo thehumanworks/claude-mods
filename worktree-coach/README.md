@@ -8,7 +8,7 @@ A subagent started with `isolation: worktree`, or a session started with `claude
 This agent is isolated in the worktree <path>, but this command is too complex to verify that it stays inside the worktree. Refusing to run it — a worktree-isolated agent's git operations must target its own worktree. Split it into plain, separate commands and run them from <path>.
 ```
 
-Each refusal costs Claude a turn, and Claude has to guess what to change. With this mod, Claude reads a short note right after the refusal. The note gives Claude Code's reason and remedy, quoted as they are, then the agent's worktree path and a few fixed tips that are safe in every case.
+Each refusal costs Claude a turn, and Claude has to guess what to change. With this mod, Claude reads a short note right after the refusal. The note gives Claude Code's reason and remedy, quoted when they are its own fixed sentences. It then gives the agent's worktree path, once checked against the agent's real worktree, and a few fixed tips that are safe in every case.
 
 The mod uses no model calls and no network. It never changes the command or any permission. It only adds the note. The note never repeats any part of the refused command as a suggestion. The guard is there on purpose, and the mod only helps Claude comply with it.
 
@@ -46,10 +46,12 @@ The tips are the same for every command. An earlier version also suggested a rew
 
 | Question | Answer |
 | --- | --- |
-| Which results | Results of the Bash tool whose text is one of Claude Code's worktree refusals. The mod checks Claude Code 2.1.325's wording: the git guard ("…but this command <reason>. Refusing to run it — … git operations must target its own worktree.") and the working-directory check ("…this command's working directory … is in a different worktree" or "… resolved to the shared checkout"). Other errors get no note. |
-| Patterns | The reason in the refusal sorts it into a pattern, so that each kind of refusal is counted on its own: `too-complex`, `git-twice`, `shell-wrapper` (sh -c, xargs, eval before git), `chdir`, `runtime-value` (globs, variables, words filled in at run time), `git-env` (GIT_DIR, `-c` config, env flags), `cwd-outside` and `other`. |
+| Which results | Only Bash results that Claude Code marks as an error and whose whole text, apart from an optional `Exit code N` line, is one line in the exact shape of Claude Code 2.1.325's git guard: "This agent (or session) is isolated in the worktree <path>, but this command <reason>. Refusing to run it — a worktree-isolated agent's git operations must target its own worktree. <remedy>". Refusal wording inside other output gets no note. Neither does a successful command that prints it, such as `cat` of a file. |
+| Whose worktree | The mod reads the agent's directory in its own hook, with `$.session.cwd()`, and finds its worktree root with `git rev-parse --show-toplevel`. If the path in the refusal is not exactly that root, no note is added. If the root can't be read, the note doesn't show any path. |
+| What is quoted | Claude Code's reason and remedy are quoted only when they are one of its fixed sentences, word for word, and the remedy only when the path has been checked. Any other wording gets a generic line instead. The refused command is never quoted. |
+| Patterns | The reason in the refusal sorts it into a pattern, so that each kind of refusal is counted on its own: `too-complex`, `git-twice`, `shell-wrapper` (sh -c, xargs, eval before git), `chdir`, `runtime-value` (globs, variables, words filled in at run time), `git-env` (GIT_DIR, `-c` config, env flags), and `other`. |
 | How often | The first refusal of a pattern gets the full note. The second gets nothing, because the note is still just above it. From the third on, each refusal gets a one-line reminder of the tips. |
-| Subagents | Counts are kept separately for each agent (by `agentId`) and for the main loop. The guard mostly fires in subagents, so each one gets its own first note. |
+| Subagents | Counts are kept separately for each agent (by `agentId`) and for the main loop. The guard mostly fires in subagents, so each one gets its own first note. Counts are kept for at most 64 agents. When there are more, the agent refused least recently is forgotten. |
 | Whose calls | Only calls the model made: calls the engine raised that carry the model's `tool_use_id`. A plugin's own `$.tool.call` is skipped, because its result goes back to that plugin and never reaches Claude. |
 | What it changes | Only `context` on the result, which is the text the model reads after the result. The command, the result and permissions are left as they are. If the hook fails, the call is answered as Claude Code answered it. |
 
@@ -58,6 +60,7 @@ The tips are the same for every command. An earlier version also suggested a rew
 - The mod matches Claude Code 2.1.325's exact wording. If a later version rewords the refusal, no note is added until the patterns are updated.
 - The note doesn't say which part of the command caused the refusal, beyond Claude Code's own reason.
 - Counts are kept in memory, so a restart or a resumed session starts from zero.
+- The working-directory refusal ("…this command's working directory … is in a different worktree") gets no note: the agent's directory is outside the path it names, so the path can't be checked.
 - The PowerShell tool has no such guard, so the mod does nothing there.
 
 ## Development

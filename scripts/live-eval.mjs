@@ -123,6 +123,9 @@ function loadScenario(file) {
     sess.model = model
     sess.turns ??= sess.prompt !== undefined ? [sess.prompt] : undefined
     if (!Array.isArray(sess.turns) || sess.turns.length === 0 || sess.turns.some(t => typeof t !== 'string')) problems.push(`${at}: needs "prompt" (a string) or "turns" (strings; a turn may be a slash command such as "/compact")`)
+    // A `/model` turn would switch the session to another model mid-run.
+    for (const t of Array.isArray(sess.turns) ? sess.turns : []) if (typeof t === 'string' && /^\s*\/model\b/.test(t)) problems.push(`${at}: a "/model" turn is refused; set "model" instead`)
+    scan(`${at}.settings`, sess.settings)
     scan(`${at}.options`, sess.options)
     scan(`${at}.pluginOptions`, sess.pluginOptions)
     scan(`${at}.env`, sess.env)
@@ -510,6 +513,7 @@ async function runScenario(scenario, opts) {
   }
   process.once('SIGINT', onSignal)
   process.once('SIGTERM', onSignal)
+  process.once('SIGHUP', onSignal)
   try {
     await writeSetup(repo, scenario.setup)
     for (const [i, sess] of scenario.sessions.entries()) {
@@ -548,6 +552,7 @@ async function runScenario(scenario, opts) {
   } finally {
     process.off('SIGINT', onSignal)
     process.off('SIGTERM', onSignal)
+    process.off('SIGHUP', onSignal)
     cleanup()
   }
   console.log(`  ${failures === 0 ? PASS : FAIL} ${scenario.name}  ${color('2', `$${cost.toFixed(3)}`)}`)

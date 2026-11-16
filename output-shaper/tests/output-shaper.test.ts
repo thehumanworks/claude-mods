@@ -81,9 +81,9 @@ const ok = (stdout: string, more: Record<string, unknown> = {}): Answer => ({
 const stdoutOf = (r: ToolCallResult) => (r.result as { stdout: string }).stdout
 
 test('settings: defaults, values in range, and a value out of range keeps the default', async () => {
-  expect(resolveConfig({}).config).toEqual({ threshold: 20_000, headLines: 40, tailLines: 60, saveDir: '' })
+  expect(resolveConfig({}).config).toEqual({ threshold: 20_000, headLines: 40, tailLines: 60, saveDir: '', keepFailingTail: false })
   const { config, problems } = resolveConfig({ threshold: '5000', headLines: 0, tailLines: 5000, saveDir: ' /tmp/out ' })
-  expect(config).toEqual({ threshold: 5000, headLines: 0, tailLines: 60, saveDir: '/tmp/out' })
+  expect(config).toEqual({ threshold: 5000, headLines: 0, tailLines: 60, saveDir: '/tmp/out', keepFailingTail: false })
   expect(problems.length).toBe(1)
   expect(problems[0]).toContain('tailLines')
 })

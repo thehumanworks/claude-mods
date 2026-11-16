@@ -34,7 +34,7 @@ export function render(root) {
   mp.plugins = mods.map((m) => ({ name: m.name, source: `./${m.dir}`, description: m.description }));
   const marketplace = JSON.stringify(mp, null, 2) + '\n';
 
-  const rows = mods.map((m) => `| [${m.name}](./${m.dir}) | ${m.description.replace(/\|/g, '\\|')} |`);
+  const rows = mods.map((m) => `| [${m.name}](./${m.dir}) | ${m.description.replace(/\s*\n\s*/g, ' ').replace(/\|/g, '\\|')} |`);
   const table = [START, '| Mod | What it does |', '| --- | --- |', ...rows, END].join('\n');
   const readmePath = join(root, 'README.md');
   const readme = readFileSync(readmePath, 'utf8');
@@ -60,8 +60,10 @@ function summary(cur, next) {
 export function main(argv, root) {
   const mode = argv.includes('--write') ? 'write' : argv.includes('--check') ? 'check' : null;
   if (!mode) { console.error('usage: gen-listings.mjs --check | --write'); return 2; }
+  let files;
+  try { files = render(root); } catch (err) { console.error(`gen-listings: ${err.message}`); return 2; }
   let stale = 0;
-  for (const f of render(root)) {
+  for (const f of files) {
     const cur = readFileSync(f.path, 'utf8');
     if (cur === f.next) continue;
     stale++;

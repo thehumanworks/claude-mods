@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, cpSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,4 +50,39 @@ test('merge-branch.sh stops on other conflicts', () => {
   const res = spawnSync('bash', ['scripts/merge-branch.sh', 'x'], { cwd: r, encoding: 'utf8' });
   assert.equal(res.status, 1);
   assert.match(res.stderr, /f\.txt/);
+});
+
+test('merge-branch.sh stops when README text outside the table conflicts, keeps one-sided edits', () => {
+  const setup = () => {
+    const r = mkdtempSync(join(tmpdir(), 'mb-'));
+    git(r, 'init', '-q', '-b', 'main');
+    git(r, 'config', 'user.email', 't@t'); git(r, 'config', 'user.name', 't');
+    mkdirSync(join(r, 'scripts')); mkdirSync(join(r, '.claude-plugin'));
+    for (const f of ['gen-listings.mjs', 'merge-branch.sh']) copyFileSync(join(here, f), join(r, 'scripts', f));
+    writeFileSync(join(r, '.claude-plugin', 'marketplace.json'), '{"name":"x","owner":{"name":"o"},"plugins":[]}');
+    writeFileSync(join(r, 'README.md'), '# x\n\nintro\n\n<!-- mods:start -->\n<!-- mods:end -->\n');
+    git(r, 'add', '-A'); git(r, 'commit', '-qm', 'base');
+    git(r, 'checkout', '-qb', 'feat'); addMod(r, 'mod-a');
+    return r;
+  };
+  const edit = (r, text) => {
+    const p = join(r, 'README.md');
+    writeFileSync(p, readFileSync(p, 'utf8').replace('intro', text));
+    git(r, 'commit', '-qam', text);
+  };
+  const run = (r) => spawnSync('bash', ['scripts/merge-branch.sh', 'feat'], { cwd: r, encoding: 'utf8' });
+
+  // both sides edit the intro differently: stop
+  let r = setup(); edit(r, 'theirs intro');
+  git(r, 'checkout', '-q', 'main'); addMod(r, 'mod-b'); edit(r, 'ours intro');
+  let res = run(r);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /conflicting non-listing edits/);
+
+  // only main edits the intro: our text is kept, mods merged
+  r = setup(); git(r, 'checkout', '-q', 'main'); addMod(r, 'mod-b'); edit(r, 'ours intro');
+  res = run(r);
+  assert.equal(res.status, 0, res.stderr);
+  assert.match(readFileSync(join(r, 'README.md'), 'utf8'), /ours intro/);
+  assert.equal(gen(r, '--check').status, 0);
 });

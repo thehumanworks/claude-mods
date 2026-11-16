@@ -20,7 +20,23 @@ if [ -n "$other" ]; then
   exit 1
 fi
 
-for f in $conflicts; do git checkout --theirs -- "$f"; done
+# Text of a conflicted file outside what gen-listings regenerates.
+strip() { # $1 = file, $2 = stage
+  git show ":$2:$1" 2>/dev/null | node -e '
+    const f = process.argv[1]; let s = require("fs").readFileSync(0, "utf8");
+    if (f === "README.md") s = s.replace(/<!-- mods:start -->[\s\S]*<!-- mods:end -->/, "");
+    else { try { const j = JSON.parse(s); delete j.plugins; s = JSON.stringify(j); } catch {} }
+    process.stdout.write(s)' "$1"
+}
+for f in $conflicts; do
+  b=$(strip "$f" 1); o=$(strip "$f" 2); t=$(strip "$f" 3)
+  if [ "$o" = "$b" ] || [ "$o" = "$t" ]; then side=theirs; else side=ours; fi
+  if [ "$o" != "$b" ] && [ "$t" != "$b" ] && [ "$o" != "$t" ]; then
+    echo "$f has conflicting non-listing edits on both sides; resolve by hand." >&2
+    exit 1
+  fi
+  git checkout --$side -- "$f"
+done
 node scripts/gen-listings.mjs --write || exit 1
 git add .claude-plugin/marketplace.json README.md
 git commit --no-edit

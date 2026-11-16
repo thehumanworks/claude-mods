@@ -1,8 +1,10 @@
 {
   "name": "worktree-coach",
   "version": "0.1.0",
-  "description": "When Claude Code refuses a worktree-isolated agent's Bash command as unverifiable, tells Claude which part of the command tripped the check and gives the concrete rewrite (separate commands, git -C <worktree>)",
-  "author": { "name": "Tomas Roda" },
+  "description": "When Claude Code refuses a worktree-isolated agent's Bash command as unverifiable, adds a short note with Claude Code's reason and remedy, the worktree path and fixed tips for running git there",
+  "author": {
+    "name": "Tomas Roda"
+  },
   "userConfig": {
     "enabled": {
       "type": "boolean",

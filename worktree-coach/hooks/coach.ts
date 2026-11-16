@@ -1,4 +1,4 @@
-// Reading Claude Code's worktree refusals and writing the rewrite, free of the engine, so the tests run the same code.
+// Reading Claude Code's worktree refusals and writing the note, free of the engine, so the tests run the same code.
 
 /**
  * The kinds of refusal Claude Code 2.1.325 gives a worktree-isolated agent's
@@ -22,32 +22,28 @@ export type Pattern =
   /** Any other worktree refusal. */
   | 'other'
 
-export type Refusal = { pattern: Pattern; worktree: string; reason: string }
-
-/** One refused call as the coach sees it. */
-export type Seen = { pattern: Pattern; count: number }
+/** A refusal as Claude Code worded it: its reason ("this command …") and its remedy, both quoted to Claude as they are. */
+export type Refusal = { pattern: Pattern; worktree: string; reason: string; remedy: string }
 
 /** The full note is given at the first refusal of a pattern; the short reminder from this refusal of it on. */
 export const REMINDER_FROM = 3
-/** Commands are quoted up to this many characters. */
-export const QUOTE_CHARS = 120
-
-const squash = (text: string) => text.replace(/\s+/g, ' ').trim()
-export const clip = (text: string, max: number) => (text.length <= max ? text : `${text.slice(0, max - 1)}…`)
 
 // `${noun} is isolated in the worktree ${path}, but this command ${reason}. Refusing to run it — ${possessive} git operations must target its own worktree. ${remedy}`
-const GUARD = /(?:This agent|This session) is isolated in the worktree (.+?), but this command (.+?)\. Refusing to run it — a worktree-isolated (?:agent|session)'s git operations must target its own worktree\./s
+const GUARD = /(?:This agent|This session) is isolated in the worktree (.+?), but (this command .+?)\. Refusing to run it — a worktree-isolated (?:agent|session)'s git operations must target its own worktree\.(?: ([^\n]*))?/s
 // `${noun} is isolated in the worktree ${path}, but this command's working directory (…) is in a different worktree (…)` / `… resolved to the shared checkout (…)`. Refusing to run it there — … commands must run inside its (own) worktree.
-const CWD = /(?:This agent|This session) is isolated in the worktree (.+?), but this command's working directory (.+?)\. Refusing to run it there — a worktree-isolated (?:agent|session)'s commands must run inside its (?:own )?worktree\./s
+const CWD = /(?:This agent|This session) is isolated in the worktree (.+?), but (this command's working directory .+?)\. Refusing to run it there — a worktree-isolated (?:agent|session)'s commands must run inside its (?:own )?worktree\.(?: ([^\n]*))?/s
+
+/** Claude Code's remedy sentence(s), or its usual one when the text is cut. */
+const remedyOf = (text: string | undefined, worktree: string) => text?.trim() || `Re-run the command from ${worktree}.`
 
 /** What Claude Code's refusal says, or undefined when the text is not a worktree refusal. */
 export function parseRefusal(text: string | undefined): Refusal | undefined {
   if (text === undefined || !text.includes('is isolated in the worktree')) return undefined
   const cwd = CWD.exec(text)
-  if (cwd !== null) return { pattern: 'cwd-outside', worktree: cwd[1]!, reason: `working directory ${cwd[2]!}` }
+  if (cwd !== null) return { pattern: 'cwd-outside', worktree: cwd[1]!, reason: cwd[2]!, remedy: remedyOf(cwd[3], cwd[1]!) }
   const m = GUARD.exec(text)
   if (m === null) return undefined
-  return { pattern: classify(m[2]!), worktree: m[1]!, reason: m[2]! }
+  return { pattern: classify(m[2]!.replace(/^this command /, '')), worktree: m[1]!, reason: m[2]!, remedy: remedyOf(m[3], m[1]!) }
 }
 
 /** The pattern of a guard refusal, from its reason ("this command <reason>."). */
@@ -62,250 +58,31 @@ export function classify(reason: string): Pattern {
   return 'other'
 }
 
-/** One piece of a command line between `&&`, `||`, `;` and newlines, and the operator that ended it. */
-type Segment = { text: string; op: '&&' | '||' | ';' | '' }
+/** The fixed tips: the same for every command, so nothing of the refused command is ever suggested back. */
+const tips = (wt: string) =>
+  [
+    '- Run each git command as its own Bash call.',
+    `- Use \`git -C ${wt}\` with exactly this path.`,
+    '- Use no `cd` chains, `$(...)`, pipes into git, or GIT_* variables.',
+    '- If you need data from one command, run it first and use its output in the next call.',
+  ].join('\n')
 
 /**
- * Splits a command line on `&&`, `||`, `;` and newlines outside quotes,
- * `$(…)`, backticks and brackets. Pipes stay inside a segment.
+ * The full note: Claude Code's reason and remedy as it gave them, the
+ * worktree, and the fixed tips. It never quotes the refused command.
  */
-export function segments(command: string): Segment[] {
-  const out: Segment[] = []
-  let depth = 0
-  let quote: '"' | "'" | '`' | undefined
-  let start = 0
-  const push = (end: number, op: Segment['op'], skip: number) => {
-    const text = command.slice(start, end).trim()
-    if (text !== '') out.push({ text, op })
-    else if (out.length > 0 && op !== '') out[out.length - 1]!.op = op
-    start = end + skip
-  }
-  for (let i = 0; i < command.length; i++) {
-    const c = command[i]!
-    if (c === '\\' && quote !== "'") {
-      i++
-      continue
-    }
-    if (quote !== undefined) {
-      if (c === quote) quote = undefined
-      continue
-    }
-    if (c === '"' || c === "'" || c === '`') quote = c
-    else if (c === '(' || c === '{') depth++
-    else if ((c === ')' || c === '}') && depth > 0) depth--
-    else if (depth === 0) {
-      const two = command.slice(i, i + 2)
-      if (two === '&&' || two === '||') {
-        push(i, two, 2)
-        i++
-      } else if (c === ';' || c === '\n') push(i, c === ';' ? ';' : '', 1)
-    }
-  }
-  push(command.length, '', 0)
-  if (out.length > 0) out[out.length - 1]!.op = ''
-  return out
-}
-
-const GIT = /^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*git(?:\s|$)/
-const CD = /^(?:cd|pushd)(?:\s+(?:"([^"]*)"|'([^']*)'|(\S+)))?\s*$/
-const WRAPPER = /(?:^|[\s|;&(])(?:sh|bash|zsh|eval|xargs|exec|env|nohup|timeout|watch|find\s.*-exec)(?:\s|$)/
-const isGit = (s: string) => GIT.test(s)
-/** Stands for a substitution's output while the rest of the command is rewritten. */
-const SLOT = '\u0000out\u0000'
-const quoteArg = (s: string) => (/^[\w@%+=:,./~-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`)
-
-/** `dir` resolved against `base`, `.` and `..` folded lexically (symlinks are not followed). */
-export function resolvePath(base: string, dir: string): string {
-  const parts: string[] = []
-  for (const p of `${dir.startsWith('/') ? '' : `${base}/`}${dir}`.split('/')) {
-    if (p === '' || p === '.') continue
-    if (p === '..') parts.pop()
-    else parts.push(p)
-  }
-  return `/${parts.join('/')}`
-}
-
-/** Whether `path` is the worktree or under it, both resolved lexically. */
-export function isInside(path: string, worktree: string): boolean {
-  if (!path.startsWith('/') || !worktree.startsWith('/')) return false
-  const wt = resolvePath('/', worktree)
-  const p = resolvePath('/', path)
-  return wt !== '/' && (p === wt || p.startsWith(`${wt}/`))
-}
-
-/**
- * Refusals about where git runs: changing directory, the shared checkout,
- * another worktree, GIT_* variables or git's own location options. The mod
- * offers no rewrite for these, only Claude Code's own remedy.
- */
-export const isLocationRefusal = (refusal: Refusal) =>
-  refusal.pattern === 'chdir' ||
-  refusal.pattern === 'git-env' ||
-  refusal.pattern === 'cwd-outside' ||
-  /shared checkout|different worktree|GIT_[A-Z]|--git-dir|--work-tree|core\.worktree|changes directory|-C /i.test(refusal.reason)
-
-/** git's own options that move where it reads or writes, or inject configuration: never in a rewrite. */
-const LOCATION_OPTION = /(?:^|\s)(?:--git-dir|--work-tree|--namespace|--config-env|--exec-path|--bare|--super-prefix)(?:[=\s]|$)/
-/** Global options (before the subcommand) a rewrite may keep as they are. */
-const SAFE_GLOBAL = /^(?:--no-pager|-p|--paginate|-P|--no-replace-objects|--literal-pathspecs|--glob-pathspecs|--noglob-pathspecs|--icase-pathspecs|--no-optional-locks|--no-advice)(?=\s|$)/
-const ARG = /^("([^"$`\\]*)"|'([^']*)'|([^\s"'$`\\~]+))/
-
-/**
- * A git segment rewritten to `git -C <dir> …`, folding its own `-C`s into the
- * directory. Undefined when the segment sets anything git could use to leave
- * the worktree, or its directory is not inside the worktree.
- */
-function gitStep(text: string, base: string, worktree: string): string | undefined {
-  if (!text.startsWith('git') || LOCATION_OPTION.test(text)) return undefined
-  let rest = text.slice(3).trimStart()
-  let dir = base
-  const kept: string[] = []
-  for (;;) {
-    const c = /^-C\s+/.exec(rest)
-    if (c !== null) {
-      const arg = ARG.exec(rest.slice(c[0].length))
-      if (arg === null) return undefined
-      dir = resolvePath(dir, arg[2] ?? arg[3] ?? arg[4]!)
-      if (!isInside(dir, worktree)) return undefined
-      rest = rest.slice(c[0].length + arg[0].length).trimStart()
-      continue
-    }
-    const safe = SAFE_GLOBAL.exec(rest)
-    if (safe !== null) {
-      kept.push(safe[0])
-      rest = rest.slice(safe[0].length).trimStart()
-      continue
-    }
-    if (rest.startsWith('-')) return undefined // -c, --config-env=, and any global option not known to be harmless
-    break
-  }
-  if (!isInside(dir, worktree)) return undefined
-  return ['git', '-C', quoteArg(dir), ...kept, ...(rest === '' ? [] : [rest])].join(' ')
-}
-
-/** What in the command most likely tripped the check, from its structure, worst first. */
-export function triggers(command: string): string[] {
-  const segs = segments(command)
-  const found: string[] = []
-  const gits = segs.filter(s => isGit(s.text))
-  const sub = /\$\([^)]*\)?|`[^`]*`?/.exec(command)
-  if (sub !== null) found.push(`the command substitution \`${clip(sub[0], 40)}\` (its output is only known when it runs)`)
-  if (/\|\s*(?:xargs\s+(?:-\S+\s+)*)?git\b/.test(command)) found.push('a pipe into git')
-  if (/<<-?\s*['"]?\w/.test(command)) found.push('a heredoc')
-  if (/^\s*(?:for|while|until|if|case)\b|^\s*[({]/.test(command)) found.push('a shell loop, conditional or group around git')
-  const wrap = segs.find(s => !isGit(s.text) && /\bgit\b/.test(s.text) && WRAPPER.test(s.text))
-  if (wrap !== undefined) found.push(`git run through another program (\`${clip(wrap.text, 50)}\`)`)
-  const env = /(?:^|\s)(GIT_[A-Z_]+)=/.exec(command)
-  if (env !== null) found.push(`the \`${env[1]}=\` assignment`)
-  if (gits.some(s => /\$\{?[A-Za-z_]/.test(s.text))) found.push("a shell variable in git's arguments")
-  if (gits.some(s => /(?:^|\s)~(?:\/|\s|$)/.test(s.text))) found.push("a `~` path in git's arguments")
-  if (gits.length > 1) found.push(`${gits.length} git commands in one call`)
-  // A plain `cd X && git …` can pass on its own; with anything above it, the `cd` makes the rest harder to verify.
-  const cdBeforeGit = segs.findIndex((s, i) => CD.test(s.text) && segs.slice(i + 1).some(t => isGit(t.text)))
-  if (cdBeforeGit !== -1) found.push(`the \`${clip(segs[cdBeforeGit]!.text, 60)}\` chained in front of git (use \`git -C\` instead)`)
-  const ops = new Set(segs.slice(0, -1).map(s => s.op).filter(op => op !== ''))
-  if (segs.length > 1 && gits.length > 0) {
-    const named = [...ops].map(op => `\`${op}\``).join(' and ')
-    found.push(named === '' ? 'several commands on separate lines around git' : `the ${named} chain around git`)
-  }
-  return found
-}
-
-/**
- * The command split into separate calls, `cd X &&` folded into `git -C X`.
- * Undefined when the command cannot be rewritten mechanically (substitutions,
- * pipes into git, heredocs, loops, wrappers) or would come out the same.
- */
-export function rewrite(command: string, worktree: string): string[] | undefined {
-  // One plain `$(…)`: run its command first, then the rest with that output pasted in.
-  const sub = /\$\(([^()`$]*)\)/.exec(command)
-  if (sub !== null && command.split('$(').length === 2) {
-    const outer = rewrite(command.replace(sub[0], SLOT), worktree)
-    const at = outer?.findIndex(c => c.includes(SLOT)) ?? -1
-    if (outer === undefined || at === -1) return undefined
-    const dir = /^(?:git -C|cd) ('[^']*'|\S+)/.exec(outer[at]!)?.[1]
-    const inner = sub[1]!.trim()
-    const first = rewrite(dir === undefined ? inner : `cd ${dir} && ${inner}`, worktree) ?? [inner]
-    const step = at + first.length // 1-based number of the inner's last step
-    return [...outer.slice(0, at), ...first, ...outer.slice(at).map(c => c.replace(SLOT, `<output of step ${step}>`))]
-  }
-  if (/\$\(|`|<<|\|\s*(?:xargs\s+(?:-\S+\s+)*)?git\b/.test(command)) return undefined
-  if (/^\s*(?:for|while|until|if|case)\b|^\s*[({]/.test(command)) return undefined
-  // Anything that sets or names a GIT_* variable, or git's location options, is the guard's to judge.
-  if (/GIT_[A-Za-z_]/.test(command) || LOCATION_OPTION.test(command)) return undefined
-  if (!isInside(worktree, worktree)) return undefined
-  const segs = segments(command)
-  const out: string[] = []
-  let dir = resolvePath('/', worktree)
-  for (const s of segs) {
-    const cd = CD.exec(s.text)
-    if (cd !== null) {
-      const to = cd[1] ?? cd[2] ?? cd[3]
-      if (to === undefined || to.startsWith('~') || to === '-' || /[$`\\]/.test(to)) return undefined
-      dir = resolvePath(dir, to)
-      if (!isInside(dir, worktree)) return undefined
-      continue
-    }
-    if (isGit(s.text)) {
-      const step = gitStep(s.text, dir, worktree) // VAR=… git: undefined, as it does not start with git
-      if (step === undefined) return undefined
-      out.push(step)
-    } else {
-      if (/\bgit\b/.test(s.text) && WRAPPER.test(s.text)) return undefined
-      if (/^(?:export|declare|typeset|readonly|unset|env)\b|^[A-Za-z_][A-Za-z0-9_]*=/.test(s.text)) return undefined // the environment git would inherit
-      // A command that does not name git is not what the check refuses: it may keep its `cd`, into the worktree.
-      out.push(dir === resolvePath('/', worktree) ? s.text : `cd ${quoteArg(dir)} && ${s.text}`)
-    }
-  }
-  if (out.length === 0 || (out.length === 1 && squash(out[0]!) === squash(command))) return undefined
-  return out
-}
-
-const HINT: Record<Pattern, string> = {
-  'too-complex': 'Claude Code could not parse this command well enough to prove it stays in the worktree.',
-  'git-twice': 'Claude Code verifies one git invocation per command.',
-  'shell-wrapper': 'Claude Code cannot see what git does when another program (sh -c, xargs, eval, env) starts it.',
-  chdir: 'Claude Code cannot verify where git runs when the directory is changed in the command or computed at runtime.',
-  'runtime-value': 'Claude Code cannot verify a value the shell fills in only when the command runs.',
-  'git-env': 'Claude Code cannot verify git configuration or GIT_* variables set in the command.',
-  'cwd-outside': "The Bash tool's working directory is outside this worktree.",
-  other: 'Claude Code could not verify that this command stays in the worktree.',
-}
-
-const RULES = (wt: string) =>
-  `For git in this worktree: one plain git command per Bash call; \`git -C ${quoteArg(wt)} …\` instead of \`cd … &&\`; no \`$(…)\` or backticks (run the inner command first and paste its output literally); no pipes into git; no \`;\`, \`&&\` or \`||\` chains around git; literal paths, no variables or \`~\`. Do not resend the same command.`
-
-const steps = (cmds: string[]) => cmds.map((c, i) => `  ${i + 1}. ${clip(c, QUOTE_CHARS * 2)}`).join('\n')
-
-/**
- * For a refusal about where git runs: Claude Code's own remedy, and no
- * rewrite, so the note never points git anywhere the guard has not.
- */
-function locationNote(refusal: Refusal): string {
-  return `worktree-coach: ${HINT[refusal.pattern]} This refusal is about where git runs. Run git in your own worktree, ${refusal.worktree}, and nowhere else: do not change the directory, GIT_* variables or git's location options to get around the check.`
-}
-
-/** The full note: why, what to change and, when it can be written out, the rewrite. */
-export function noteFor(refusal: Refusal, command: string): string {
-  const wt = refusal.worktree
-  if (isLocationRefusal(refusal)) return locationNote(refusal)
-  const lines = [`worktree-coach: ${HINT[refusal.pattern]}`]
-  const found = triggers(command)
-  if (found.length > 0) lines.push(`Likely trigger: ${found.slice(0, 3).join('; ')}.`)
-  const cmds = rewrite(command, wt)
-  if (cmds !== undefined) lines.push(`Rewrite: run these as separate Bash calls, in order, checking each result${cmds.some(c => c.includes('<output of step')) ? ' and pasting each <output of step N> in literally' : ''}:\n${steps(cmds)}`)
-  else lines.push('Rewrite: split it by hand into plain, separate commands, following the rules below.')
-  lines.push(RULES(wt))
-  return lines.join('\n')
+export function noteFor(refusal: Refusal): string {
+  return [
+    `worktree-coach: Claude Code refused this command because "${refusal.reason}". Its remedy: "${refusal.remedy}"`,
+    `Your worktree: ${refusal.worktree}`,
+    tips(refusal.worktree),
+    'Do not resend the same command.',
+  ].join('\n')
 }
 
 /** The short reminder for a pattern Claude has already had the note for. */
-export function reminderFor(refusal: Refusal, command: string, count: number): string {
-  if (isLocationRefusal(refusal)) return `worktree-coach: refused again (${count}× this pattern). Run git in your own worktree, ${refusal.worktree}.`
-  const cmds = rewrite(command, refusal.worktree)
-  const how = cmds !== undefined ? ` Run instead, one per call: ${cmds.map(c => `\`${clip(c, QUOTE_CHARS)}\``).join(', then ')}.` : ` One plain git command per call, \`git -C ${quoteArg(refusal.worktree)}\`, no \`cd &&\`, \`$(…)\`, pipes or chains.`
-  return `worktree-coach: refused again (${count}× this pattern).${how}`
-}
+export const reminderFor = (refusal: Refusal, count: number) =>
+  `worktree-coach: refused again (${count}× this pattern). One git command per Bash call, \`git -C ${refusal.worktree}\`, no \`cd\` chains, \`$(...)\`, pipes into git or GIT_* variables.`
 
 /**
  * Counts refusals per agent loop and pattern, and says what each gets: the
@@ -316,12 +93,12 @@ export class Coach {
   private counts = new Map<string, number>()
 
   /** The note for this refusal, or undefined. */
-  record(refusal: Refusal, command: string, agentId: string | undefined): string | undefined {
+  record(refusal: Refusal, agentId: string | undefined): string | undefined {
     const key = `${agentId ?? ''}\0${refusal.pattern}`
     const count = (this.counts.get(key) ?? 0) + 1
     this.counts.set(key, count)
-    if (count === 1) return noteFor(refusal, command)
-    if (count >= REMINDER_FROM) return reminderFor(refusal, command, count)
+    if (count === 1) return noteFor(refusal)
+    if (count >= REMINDER_FROM) return reminderFor(refusal, count)
     return undefined
   }
 }

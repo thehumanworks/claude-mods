@@ -1,6 +1,6 @@
 {
   "name": "worktree-coach-chained-git",
-  "description": "A session isolated in a worktree (claude --worktree) runs `cd src && git log -1 --oneline $(git rev-parse --abbrev-ref HEAD)`, which Claude Code refuses as too complex to verify. With the mod on, Claude reads the note (trigger and the `git -C` rewrite) and recovers with git -C; with it off, the refusal arrives without a note.",
+  "description": "A session isolated in a worktree (claude --worktree) runs `cd src && git log -1 --oneline $(git rev-parse --abbrev-ref HEAD)`, which Claude Code refuses as too complex to verify. With the mod on, Claude reads the note (Claude Code's reason and remedy, the worktree path, fixed tips; nothing of the command) and recovers with git -C; with it off, the refusal arrives without a note.",
   "setup": {
     "files": {
       "src/app.js": "export const answer = 42\n",
@@ -13,25 +13,60 @@
       "model": "haiku",
       "worktree": "coach-on",
       "prompt": "Run exactly this Bash command, unchanged, as your first tool call: cd src && git log -1 --oneline $(git rev-parse --abbrev-ref HEAD)\nIf it is refused, follow the guidance that comes with the refusal to get that log line, then reply with one line saying what you ran.",
-      "allowedTools": ["Bash"],
+      "allowedTools": [
+        "Bash"
+      ],
       "assert": [
-        { "in": "toolResults", "matches": "This session is isolated in the worktree .*too complex to verify that it stays inside the worktree", "label": "Claude Code refused the chained git command" },
-        { "in": "transcript", "matches": "worktree-coach: Claude Code could not parse this command", "label": "the note reached the model" },
-        { "in": "transcript", "matches": "Likely trigger: the command substitution `\\$\\(git rev-parse --abbrev-ref HEAD\\)`.*the `cd src` chained in front of git", "label": "the note names the trigger" },
-        { "in": "transcript", "matches": "1\\. git -C [^ ]*coach-on/src rev-parse --abbrev-ref HEAD", "label": "the note gives the git -C rewrite" },
-        { "in": "rows", "type": "assistant", "matches": "\"command\":\"git -C [^\"]*src[^\"]* (rev-parse|log)", "label": "Claude recovered with git -C" }
+        {
+          "in": "toolResults",
+          "matches": "This session is isolated in the worktree .*too complex to verify that it stays inside the worktree",
+          "label": "Claude Code refused the chained git command"
+        },
+        {
+          "in": "transcript",
+          "matches": "worktree-coach: Claude Code refused this command because \\\\\"this command names git in a form too complex to verify",
+          "label": "the note reached the model, quoting Claude Code's reason"
+        },
+        {
+          "in": "transcript",
+          "matches": "Your worktree: [^ ]*coach-on\\\\n- Run each git command as its own Bash call\\.\\\\n- Use `git -C [^`]*coach-on` with exactly this path\\.",
+          "label": "the note gives the worktree path and the fixed tips"
+        },
+        {
+          "in": "transcript",
+          "notMatches": "worktree-coach: Claude Code refused(?:(?!Do not resend).)*(rev-parse|abbrev-ref|--oneline|cd src)",
+          "label": "the note echoes nothing of the refused command"
+        },
+        {
+          "in": "rows",
+          "type": "assistant",
+          "matches": "\"command\":\"git -C [^\"]*coach-on[^\"]* (rev-parse|log)",
+          "label": "Claude recovered with git -C"
+        }
       ]
     },
     {
       "name": "mod off",
       "model": "haiku",
       "worktree": "coach-off",
-      "options": { "enabled": false },
+      "options": {
+        "enabled": false
+      },
       "prompt": "Run exactly this Bash command, unchanged, as your only tool call: cd src && git log -1 --oneline $(git rev-parse --abbrev-ref HEAD)\nThen reply with one line saying whether it ran.",
-      "allowedTools": ["Bash"],
+      "allowedTools": [
+        "Bash"
+      ],
       "assert": [
-        { "in": "toolResults", "matches": "too complex to verify that it stays inside the worktree", "label": "Claude Code refused the chained git command" },
-        { "in": "transcript", "notMatches": "worktree-coach:", "label": "no note when disabled" }
+        {
+          "in": "toolResults",
+          "matches": "too complex to verify that it stays inside the worktree",
+          "label": "Claude Code refused the chained git command"
+        },
+        {
+          "in": "transcript",
+          "notMatches": "worktree-coach:",
+          "label": "no note when disabled"
+        }
       ]
     }
   ]

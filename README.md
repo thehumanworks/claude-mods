@@ -11,6 +11,7 @@ Mods for Claude Code.
 | [edit-check](./edit-check) | After Claude edits files, runs the project's own check command in the background and hands Claude the new errors at its next request |
 | [test-gate](./test-gate) | When Claude ends a turn after editing code without running a test or check, claude-haiku-5-5 decides whether it should, and if so the turn goes on once with a note asking Claude to run the tests or say why not |
 | [output-shaper](./output-shaper) | When a Bash command prints a lot, Claude reads its first and last lines, the line and character counts, and the path of the whole output with a hint to Grep or Read it |
+| [handoff](./handoff) | Keeps a short handoff note per repository (the work, what was done, what is next, open problems), written by claude-haiku-5-5 after turns that do real work, and hands it to Claude at session start and after each compaction |
 
 ## Install
 

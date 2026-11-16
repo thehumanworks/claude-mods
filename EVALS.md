@@ -87,6 +87,7 @@ One JSON file per scenario in `<mod>/evals/`. Only top-level `*.json` files with
       "timeoutSeconds": 300,
       "allowErrors": false,                  // true: a turn that ends in an error is not a failure
       "strictMcp": true,
+      "worktree": "probe",                   // run isolated in a new git worktree of the repo (claude --worktree probe)
       "assert": [ ... ]
     }
   ]
@@ -121,6 +122,7 @@ Each assertion names a source in `in` and checks it with `matches` and/or `notMa
 | `handoff/evals/note-roundtrip.json` | Session 1 edits two files with `minTools` 1, `minSecondsBetween` 0 and `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS=20000`: the note is written at the exit (debug log) and stored for the temp repo. Session 2 gets the `[handoff]` session-start note exactly once, and uses it. |
 | `handoff/evals/after-compact.json` | The same note; then a session with async-compaction loaded beside handoff runs a prompt, `/compact` and a prompt: the note arrives once at the start and once after the compaction, two `[handoff]` attachments in all. |
 | `output-shaper/evals/large-output.json` | `seq 1 5000` (over the 20,000 threshold, under Claude Code's inline limit) is shaped and saved by the mod under `.claude/output-shaper/`; `seq 1 30000` is shaped in place of Claude Code's `<persisted-output>` preview and points at Claude Code's own `tool-results` file; `seq 1 50` is left alone. |
+| `worktree-coach/evals/chained-git.json` | A session started with `"worktree": "coach-on"` (`claude --worktree`) runs `cd src && git log -1 --oneline $(git rev-parse --abbrev-ref HEAD)`, which Claude Code's worktree guard refuses. The note reaches the model with Claude Code's reason, the worktree path and the fixed tips, and repeats nothing of the command. Claude recovers with `git -C`. A second session with `enabled: false` gets the refusal with no note. |
 
 ## Limits
 

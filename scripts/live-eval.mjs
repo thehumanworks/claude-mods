@@ -129,6 +129,7 @@ function loadScenario(file) {
     for (const t of Array.isArray(sess.turns) ? sess.turns : []) if (typeof t === 'string' && /^\s*\/model\b/.test(t)) problems.push(`${at}: a "/model" turn is refused; set "model" instead`)
     // Agent/Task take a model parameter and Skill can name one in its frontmatter: either would run on another model.
     for (const t of sess.allowedTools ?? []) if (/^\s*(Agent|Task|Skill)\b/.test(String(t))) problems.push(`${at}: allowedTools "${t}" is refused: it can start work on another model`)
+    if (sess.worktree !== undefined && (typeof sess.worktree !== 'string' || !/^[A-Za-z0-9][\w.-]{0,63}$/.test(sess.worktree))) problems.push(`${at}: "worktree" must be a plain name (letters, digits, ".", "_", "-")`)
     if (sess.settingSources !== undefined) problems.push(`${at}: "settingSources" is not supported: sessions always run with --setting-sources '' so your own settings never load`)
     scan(`${at}.settings`, sess.settings)
     scan(`${at}.options`, sess.options)
@@ -210,6 +211,8 @@ function sessionArgs(scenario, sess, sessionId, debugFile) {
   // Isolated from the user's own settings, plugins and MCP servers unless the scenario says otherwise.
   args.push('--setting-sources', '')
   if (sess.strictMcp !== false) args.push('--strict-mcp-config')
+  // The session runs isolated in a new git worktree of the temp repo (claude --worktree <name>).
+  if (sess.worktree !== undefined) args.push('--worktree', sess.worktree)
   if (debugFile) {
     if (typeof sess.debug === 'string') args.push('--debug', sess.debug)
     args.push('--debug-file', debugFile)

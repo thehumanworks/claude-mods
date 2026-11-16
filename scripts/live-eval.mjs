@@ -9,18 +9,20 @@
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const CONFIG_DIR = process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude')
-const STORE_DIR = join(CONFIG_DIR, 'plugins', 'store')
-const PROJECTS_DIR = join(CONFIG_DIR, 'projects')
+// Every scenario runs with a CLAUDE_CONFIG_DIR of its own inside its temp folder, so
+// nothing it writes (transcripts, plugin stores, per-session folders) reaches ~/.claude.
+const storeDir = config => join(config, 'plugins', 'store')
+const AUTH_HINT = 'Live evals run with a fresh, empty CLAUDE_CONFIG_DIR, so a login saved in ~/.claude (or the keychain) is not seen. Run `claude setup-token`, then `export CLAUDE_CODE_OAUTH_TOKEN=<the token>` (or set ANTHROPIC_API_KEY), and run again.'
+const AUTH_FAILURE = /not logged in|please run \/login|invalid api key|authentication|unauthori[sz]ed|oauth token|401\b/i
 const MODELS = ['haiku', 'sonnet']
 const FORBIDDEN = /\b(opus|fable|mythos)\b/i
 // Inherited variables that could quietly map an alias to another model.
-const SCRUBBED_ENV = ['ANTHROPIC_MODEL', 'ANTHROPIC_DEFAULT_HAIKU_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL', 'ANTHROPIC_DEFAULT_OPUS_MODEL', 'ANTHROPIC_SMALL_FAST_MODEL', 'CLAUDE_CODE_SUBAGENT_MODEL']
+const SCRUBBED_ENV = ['ANTHROPIC_MODEL', 'ANTHROPIC_DEFAULT_HAIKU_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL', 'ANTHROPIC_DEFAULT_OPUS_MODEL', 'ANTHROPIC_SMALL_FAST_MODEL', 'CLAUDE_CODE_SUBAGENT_MODEL', 'CLAUDE_CONFIG_DIR']
 const SOURCES = ['transcript', 'rows', 'attachments', 'toolResults', 'assistant', 'result', 'debug', 'repo', 'store']
 
 const color = process.stdout.isTTY ? (c, s) => `\x1b[${c}m${s}\x1b[0m` : (_c, s) => s
@@ -36,7 +38,7 @@ function usage() {
   <scenario.json>  run one scenario file
   (nothing)        run every scenario of every mod
   --only <name>    run only scenarios with this name (repeatable)
-  --keep           keep the temp repo, transcripts, debug logs and store files
+  --keep           keep the temp folder (repo, transcripts, debug logs, plugin stores)
   --list           list the scenarios found and exit
   --verbose        echo the claude command lines and each turn's result`
 }
@@ -125,10 +127,12 @@ function loadScenario(file) {
     if (!Array.isArray(sess.turns) || sess.turns.length === 0 || sess.turns.some(t => typeof t !== 'string')) problems.push(`${at}: needs "prompt" (a string) or "turns" (strings; a turn may be a slash command such as "/compact")`)
     // A `/model` turn would switch the session to another model mid-run.
     for (const t of Array.isArray(sess.turns) ? sess.turns : []) if (typeof t === 'string' && /^\s*\/model\b/.test(t)) problems.push(`${at}: a "/model" turn is refused; set "model" instead`)
+    if (sess.settingSources !== undefined) problems.push(`${at}: "settingSources" is not supported: sessions always run with --setting-sources '' so your own settings never load`)
     scan(`${at}.settings`, sess.settings)
     scan(`${at}.options`, sess.options)
     scan(`${at}.pluginOptions`, sess.pluginOptions)
     scan(`${at}.env`, sess.env)
+    if (sess.env && 'CLAUDE_CONFIG_DIR' in sess.env) problems.push(`${at}: env may not set CLAUDE_CONFIG_DIR; each scenario gets its own temp config`)
     for (const d of sess.pluginDirs ?? []) {
       const p = resolve(REPO, d)
       if (!existsSync(join(p, '.claude-plugin', 'plugin.json'))) problems.push(`${at}: plugin dir ${d} is not a plugin folder`)
@@ -136,6 +140,7 @@ function loadScenario(file) {
     for (const [j, a] of (sess.assert ?? []).entries()) {
       const aat = `${at}.assert[${j}]`
       if (!SOURCES.includes(a.in)) problems.push(`${aat}: "in" must be one of ${SOURCES.join(', ')}`)
+      if (a.flags !== undefined && (typeof a.flags !== 'string' || a.flags.includes('g') || a.flags.includes('y'))) problems.push(`${aat}: flags "${a.flags}" refused: "g" and "y" make RegExp.test stateful; use count instead`)
       for (const k of ['matches', 'notMatches']) {
         if (a[k] === undefined) continue
         try {
@@ -155,37 +160,6 @@ function loadScenario(file) {
   }
   if (problems.length > 0) throw new Error(`${relative(REPO, file)}:\n  - ${problems.join('\n  - ')}`)
   return s
-}
-
-// ---------------------------------------------------------------- store
-
-function snapshotStore(prefixes) {
-  const snap = new Map()
-  if (!existsSync(STORE_DIR)) return snap
-  for (const f of readdirSync(STORE_DIR)) {
-    if (!prefixes.some(p => f.startsWith(`${p}_inline-`))) continue
-    try {
-      snap.set(f, readFileSync(join(STORE_DIR, f)))
-    } catch {
-      // Gone between listing and reading.
-    }
-  }
-  return snap
-}
-
-/** Store files of these plugins created or changed since `before`. */
-function storeChanges(before, prefixes) {
-  const now = snapshotStore(prefixes)
-  const created = [...now.keys()].filter(f => !before.has(f))
-  const changed = [...now.keys()].filter(f => before.has(f) && !before.get(f).equals(now.get(f)))
-  return { created, changed, now }
-}
-
-function restoreStore(before, prefixes) {
-  const { created, changed } = storeChanges(before, prefixes)
-  for (const f of created) rmSync(join(STORE_DIR, f), { force: true })
-  for (const f of changed) writeFileSync(join(STORE_DIR, f), before.get(f))
-  return { created, changed }
 }
 
 // ---------------------------------------------------------------- running a session
@@ -232,7 +206,7 @@ function sessionArgs(scenario, sess, sessionId, debugFile) {
   const tools = [...new Set(allowed.map(t => t.replace(/\(.*$/, '')))]
   args.push('--tools', tools.join(','))
   // Isolated from the user's own settings, plugins and MCP servers unless the scenario says otherwise.
-  args.push('--setting-sources', sess.settingSources ?? '')
+  args.push('--setting-sources', '')
   if (sess.strictMcp !== false) args.push('--strict-mcp-config')
   if (debugFile) {
     if (typeof sess.debug === 'string') args.push('--debug', sess.debug)
@@ -246,7 +220,7 @@ function sessionArgs(scenario, sess, sessionId, debugFile) {
  * slash command (`/compact`) works as a follow-up turn; stdin closes after the last
  * result and the process runs its exit hooks.
  */
-function runSession(scenario, sess, repo, artifacts, index, verbose, sessionId) {
+function runSession(scenario, sess, repo, artifacts, index, verbose, sessionId, config) {
   const wantsDebug = sess.debug !== undefined ? sess.debug !== false : (sess.assert ?? []).some(a => a.in === 'debug')
   const debugFile = wantsDebug ? join(artifacts, `session-${index + 1}.debug.log`) : null
   const streamFile = join(artifacts, `session-${index + 1}.stream.jsonl`)
@@ -254,6 +228,7 @@ function runSession(scenario, sess, repo, artifacts, index, verbose, sessionId) 
   const env = { ...process.env }
   for (const k of SCRUBBED_ENV) delete env[k]
   Object.assign(env, Object.fromEntries(Object.entries(sess.env ?? {}).map(([k, v]) => [k, String(v)])))
+  env.CLAUDE_CONFIG_DIR = config
   if (verbose) console.log(color('2', `    $ ${Object.entries(sess.env ?? {}).map(([k, v]) => `${k}=${v} `).join('')}claude ${args.map(a => (/[\s{"]/.test(a) ? `'${a}'` : a)).join(' ')}`))
 
   return new Promise(done => {
@@ -312,10 +287,11 @@ function runSession(scenario, sess, repo, artifacts, index, verbose, sessionId) 
 
 // ---------------------------------------------------------------- what the session left
 
-function findTranscript(sessionId) {
-  if (!existsSync(PROJECTS_DIR)) return null
-  for (const d of readdirSync(PROJECTS_DIR)) {
-    const f = join(PROJECTS_DIR, d, `${sessionId}.jsonl`)
+function findTranscript(config, sessionId) {
+  const projects = join(config, 'projects')
+  if (!existsSync(projects)) return null
+  for (const d of readdirSync(projects)) {
+    const f = join(projects, d, `${sessionId}.jsonl`)
     if (existsSync(f)) return f
   }
   return null
@@ -410,8 +386,8 @@ function check(a, ev, ctx) {
       files = walk(ctx.repo).filter(f => g.test(f)).map(f => ({ name: f, content: () => readFileSync(join(ctx.repo, f), 'utf8') }))
     } else {
       const plugin = a.plugin ?? ctx.scenario.pluginName
-      const { created, changed, now } = storeChanges(ctx.storeBefore, ctx.prefixes)
-      files = [...created, ...changed].filter(f => f.startsWith(`${plugin}_inline-`)).map(f => ({ name: f, content: () => now.get(f).toString('utf8') }))
+      const dir = storeDir(ctx.config)
+      files = (existsSync(dir) ? readdirSync(dir) : []).filter(f => f.startsWith(`${plugin}_`)).map(f => ({ name: f, content: () => readFileSync(join(dir, f), 'utf8') }))
     }
     const n = files.length
     if (a.exists === false) return [n === 0, n === 0 ? 'none' : `found ${files.map(f => f.name).join(', ')}`]
@@ -463,48 +439,19 @@ async function runScenario(scenario, opts) {
   const repo = join(root, 'repo')
   const artifacts = join(root, 'artifacts')
   mkdirSync(artifacts, { recursive: true })
-  const names = new Set([scenario.pluginName])
-  for (const sess of scenario.sessions) for (const d of sess.pluginDirs ?? []) names.add(pluginNameOf(resolve(REPO, d)))
-  const prefixes = [...names]
-  const storeBefore = snapshotStore(prefixes)
-  const sessionIds = []
+  // The scenario's own Claude Code config: transcripts, plugin stores and per-session
+  // folders all land here, and go with the temp folder. ~/.claude is never written.
+  const config = join(root, 'config')
+  mkdirSync(config, { recursive: true })
   let failures = 0
   let cost = 0
+  let authHinted = false
   const cleanup = () => {
-    const transcripts = sessionIds.map(findTranscript).filter(Boolean)
-    // Per-session folders some mods keep beside the store, e.g. ~/.claude/async-compaction/<session id>.
-    const sessionDirs = prefixes.flatMap(name => {
-      const dir = join(CONFIG_DIR, name)
-      if (!existsSync(dir)) return []
-      return readdirSync(dir).filter(f => sessionIds.some(id => f.startsWith(id))).map(f => join(dir, f))
-    })
-    // Claude Code's own per-session folder for Bash.
-    for (const id of sessionIds) if (existsSync(join(CONFIG_DIR, 'session-env', id))) sessionDirs.push(join(CONFIG_DIR, 'session-env', id))
     if (opts.keep) {
-      const { created, changed } = storeChanges(storeBefore, prefixes)
-      console.log(color('2', `  kept: ${root}`))
-      for (const p of [...transcripts, ...sessionDirs]) console.log(color('2', `  kept: ${p}`))
-      for (const f of created) console.log(color('2', `  kept: ${join(STORE_DIR, f)} (new)`))
-      if (changed.length > 0) {
-        // The eval changed a store file that was there before: keep the old copy so it can be put back.
-        const backup = join(artifacts, 'store-before')
-        mkdirSync(backup, { recursive: true })
-        for (const f of changed) {
-          writeFileSync(join(backup, f), storeBefore.get(f))
-          console.log(color('2', `  kept: ${join(STORE_DIR, f)} (changed; the copy from before is ${join(backup, f)})`))
-        }
-      }
+      console.log(color('2', `  kept: ${root} (repo/, artifacts/, config/ with transcripts and plugin stores)`))
       return
     }
     rmSync(root, { recursive: true, force: true })
-    for (const t of transcripts) {
-      // The project folder is named after the temp repo, so all of it belongs to this run.
-      const dir = dirname(t)
-      if (dir.startsWith(PROJECTS_DIR + sep) && basename(dir).includes('live-eval-')) rmSync(dir, { recursive: true, force: true })
-    }
-    for (const d of sessionDirs) rmSync(d, { recursive: true, force: true })
-    const { created, changed } = restoreStore(storeBefore, prefixes)
-    if (created.length + changed.length > 0) console.log(color('2', `  store: removed ${created.length} file(s) the eval created${changed.length ? `, restored ${changed.length} it changed` : ''}`))
   }
   const onSignal = () => {
     activeChild?.kill('SIGKILL')
@@ -518,9 +465,8 @@ async function runScenario(scenario, opts) {
     await writeSetup(repo, scenario.setup)
     for (const [i, sess] of scenario.sessions.entries()) {
       const sessionId = randomUUID()
-      sessionIds.push(sessionId)
-      const r = await runSession(scenario, sess, repo, artifacts, i, opts.verbose, sessionId)
-      r.transcript = findTranscript(sessionId)
+      const r = await runSession(scenario, sess, repo, artifacts, i, opts.verbose, sessionId, config)
+      r.transcript = findTranscript(config, sessionId)
       // total_cost_usd is the session's running total.
       const turnCost = Math.max(0, ...r.results.map(x => x.total_cost_usd ?? 0))
       cost += turnCost
@@ -530,6 +476,10 @@ async function runScenario(scenario, opts) {
       if (r.timedOut) runProblems.push(`timed out after ${sess.timeoutSeconds ?? 300}s`)
       if (r.results.length < sess.turns.length) runProblems.push(`only ${r.results.length} of ${sess.turns.length} turns answered (exit ${r.code})${r.stderr ? `: ${r.stderr.trim().split('\n').slice(-3).join(' | ')}` : ''}`)
       for (const x of r.results) if (x.is_error && !sess.allowErrors) runProblems.push(`turn error: ${String(x.result ?? x.subtype).slice(0, 200)}`)
+      if (!authHinted && runProblems.length > 0 && AUTH_FAILURE.test(`${r.stderr}\n${r.results.map(x => x.result ?? '').join('\n')}`)) {
+        authHinted = true
+        runProblems.push(`this looks like an auth failure. ${AUTH_HINT}`)
+      }
       for (const p of runProblems) {
         failures++
         console.log(`    ${FAIL} session: ${p}`)
@@ -538,7 +488,7 @@ async function runScenario(scenario, opts) {
       for (const a of sess.assert ?? []) {
         let ok, detail
         try {
-          ;[ok, detail] = check(a, ev, { repo, scenario, storeBefore, prefixes })
+          ;[ok, detail] = check(a, ev, { repo, scenario, config })
         } catch (err) {
           ;[ok, detail] = [false, `error: ${err.message}`]
         }

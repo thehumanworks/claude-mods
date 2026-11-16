@@ -2,7 +2,20 @@
 
 `scripts/live-eval.mjs` runs a mod for real before it is merged: real `claude -p` sessions in a throwaway git repository, with the mod loaded from its folder, then checks on what reached the model. It replaces the setup each reviewer used to rebuild by hand.
 
-It is **not run in CI**: it needs a signed-in Claude Code (`claude` on the PATH, logged in), and it spends real tokens. CI keeps running `claude plugin validate` and `claude plugin test`, which need no secrets.
+It is **not run in CI**: it needs Claude Code auth, and it spends real tokens. CI keeps running `claude plugin validate` and `claude plugin test`, which need no secrets.
+
+## Auth
+
+Each scenario runs with its own empty `CLAUDE_CONFIG_DIR` (see below), so a login saved by `/login` in `~/.claude` (or, on macOS, in the keychain under that config) is **not** found, and the kit never copies credential files or keychain entries. Give it auth through the environment:
+
+```
+claude setup-token                          # Claude subscription: prints a long-lived OAuth token
+export CLAUDE_CODE_OAUTH_TOKEN=<that token>
+# or, with an API account:
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+(`claude setup-token` and `CLAUDE_CODE_OAUTH_TOKEN` are the names in Claude Code 2.1.325.) When a session fails and its output looks like an auth error, the kit says so and repeats these steps. A host that provides auth through its own environment (a cloud session, a provider gateway) needs nothing more.
 
 ## Running
 
@@ -39,11 +52,11 @@ A scenario on Haiku costs a few cents at most; the three here reported well unde
 
 ## What a run does
 
-1. Makes a temp folder with `repo/` (the scenario's files, `git init`, one commit) and `artifacts/` (each session's stream-json output and debug log).
+1. Makes a temp folder with `repo/` (the scenario's files, `git init`, one commit), `artifacts/` (each session's stream-json output and debug log) and `config/`, which every session of the scenario gets as `CLAUDE_CONFIG_DIR`. Transcripts, plugin stores (`config/plugins/store/`), Claude Code's per-session folders and folders a mod keeps beside them (async-compaction's) all land there. Sessions of one scenario share it, so a note stored by session 1 is there for session 2. Your own `~/.claude` is never read or written.
 2. Runs the sessions one after another in `repo/`, each as `claude -p --model <m> --plugin-dir <mod> [--plugin-dir <extra>...] --settings '{"pluginConfigs":{...}}' --input-format stream-json --output-format stream-json`. The turns go in on stdin one after another, each when the previous one's result arrives, so a slash command such as `/compact` works as a follow-up turn. Stdin closes after the last result, and the process runs its exit hooks before it ends.
    Sessions run with `--setting-sources ''` and `--strict-mcp-config`, so your own settings, installed plugins and MCP servers stay out (managed settings still apply).
-3. Finds each session's transcript under `~/.claude/projects/*/<session id>.jsonl` (the id is set with `--session-id`) and checks the assertions after each session.
-4. Cleans up, pass or fail, and on Ctrl-C (SIGINT, SIGTERM, SIGHUP; not on SIGKILL or a power loss): the temp folder, the transcripts' project folder, `~/.claude/session-env/<session id>`, per-session folders a loaded mod keeps under `~/.claude/<mod>/<session id>` (async-compaction), and the store. For the store, it lists `~/.claude/plugins/store/<mod>_inline-*` for every mod the scenario loads before the run, then deletes the files the run created and puts back the content of the ones it changed. With `--keep` nothing is deleted; a changed store file's old content is saved in `artifacts/store-before/` so you can put it back.
+3. Finds each session's transcript under `config/projects/*/<session id>.jsonl` (the id is set with `--session-id`) and checks the assertions after each session.
+4. Removes the whole temp folder, pass or fail, and on Ctrl-C (SIGINT, SIGTERM, SIGHUP; not on SIGKILL or a power loss, which leave it in the system temp folder as `live-eval-*`). With `--keep` it stays, and its path is printed.
 
 ## Scenarios
 
@@ -73,7 +86,6 @@ One JSON file per scenario in `<mod>/evals/`. Only top-level `*.json` files with
       "debug": "hooks",                      // true, a --debug filter, or false; on by itself when a debug assertion is present
       "timeoutSeconds": 300,
       "allowErrors": false,                  // true: a turn that ends in an error is not a failure
-      "settingSources": "",                  // default ""; e.g. "user" to load your own settings
       "strictMcp": true,
       "assert": [ ... ]
     }
@@ -83,7 +95,7 @@ One JSON file per scenario in `<mod>/evals/`. Only top-level `*.json` files with
 
 ### Assertions
 
-Each assertion names a source in `in` and checks it with `matches` and/or `notMatches` (JavaScript regexes, with optional `flags`), `count`, or `exists`. In a regex, `{{repo}}` stands for the temp repo's path. `label` replaces the printed description.
+Each assertion names a source in `in` and checks it with `matches` and/or `notMatches` (JavaScript regexes, with optional `flags` such as `i`, `m` or `s`; `g` and `y` are refused), `count`, or `exists`. In a regex, `{{repo}}` stands for the temp repo's path. `label` replaces the printed description.
 
 | `in` | What is checked, item by item |
 | --- | --- |
@@ -95,7 +107,7 @@ Each assertion names a source in `in` and checks it with `matches` and/or `notMa
 | `result` | The final answer of each turn |
 | `debug` | Each line of the debug log (`$.ui.log(..., { to: 'debug' })` from a mod lands here) |
 | `repo` | Files in the temp repo matching the glob `path` (`*`, `**`, `?`) |
-| `store` | Store files of the mod (`plugin` to name another) that the run created or changed so far |
+| `store` | The mod's store files in the scenario's own config (`plugin` to name another mod) |
 
 - `matches` alone: at least one item matches.
 - `notMatches` alone: no item matches.
@@ -113,6 +125,5 @@ Each assertion names a source in `in` and checks it with `matches` and/or `notMa
 ## Limits
 
 - The model is still a model: a scenario that needs Claude to make particular tool calls words its prompt tightly and allows only the tools needed. Rerun a failure once before reading much into it.
-- Store files are matched by name (`<mod>_inline-*`, what `--plugin-dir` gives). Another session running the same mod from a folder at the same time could write the same file, and the restore would undo its change. Run evals when no other session uses the mods under test.
-- Files a mod writes elsewhere in your home folder are not tracked, beyond the per-session folders above.
-- Plugins built into Claude Code still load and may write their own store files (`*_builtin-*`); those are not touched.
+- Sessions always run with `--setting-sources ''`; a scenario cannot load your own settings (`settingSources` is refused, and so is `CLAUDE_CONFIG_DIR` in `env`).
+- Files a mod writes outside `CLAUDE_CONFIG_DIR` and the repo (for example, under a fixed path in your home folder) are not isolated.

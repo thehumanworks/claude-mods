@@ -1,0 +1,52 @@
+{
+  "name": "efficiency",
+  "version": "0.1.0",
+  "description": "Records per repository, across sessions, where Claude Code wastes context or calls (MCP servers loaded but never called, failed and repeated calls, large results, compactions), and /efficiency ranks it with the exact settings file and key to change; on /efficiency only, opus adds up to 5 recommendations drawn from those fixes",
+  "author": {
+    "name": "Tomas Roda"
+  },
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Efficiency",
+      "description": "Off: nothing is recorded and /efficiency is not added.",
+      "default": true
+    },
+    "useModel": {
+      "type": "boolean",
+      "title": "Model recommendations",
+      "description": "On: /efficiency also asks the model for at most 5 recommendations, drawn only from the fixes it lists. Only when you run /efficiency, never in the background. Off: the code-built list alone.",
+      "default": true
+    },
+    "model": {
+      "type": "string",
+      "title": "Model",
+      "description": "The model /efficiency asks: an alias or a full model id. Called through Claude Code, on the signed-in account.",
+      "default": "opus"
+    },
+    "timeoutSeconds": {
+      "type": "number",
+      "title": "Model timeout (seconds)",
+      "description": "The model call is given up after this long, and the code-built list is shown alone. 5 to 300.",
+      "default": 60,
+      "min": 5,
+      "max": 300
+    },
+    "largeResultChars": {
+      "type": "number",
+      "title": "Large result (characters)",
+      "description": "A tool result of at least this many characters counts as large. 1000 to 1000000.",
+      "default": 20000,
+      "min": 1000,
+      "max": 1000000
+    },
+    "windowSessions": {
+      "type": "number",
+      "title": "Sessions kept per repository",
+      "description": "The latest this many sessions of each repository are kept and judged. 2 to 100.",
+      "default": 20,
+      "min": 2,
+      "max": 100
+    }
+  }
+}

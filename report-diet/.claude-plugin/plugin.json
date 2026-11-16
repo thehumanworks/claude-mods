@@ -1,7 +1,7 @@
 {
   "name": "report-diet",
   "version": "0.1.0",
-  "description": "When a subagent is about to hand back a long report, it is held once and asked to write the full report to a file and return a short summary that ends with the file's path, so the parent's context stays small",
+  "description": "When a subagent's report reaching the agent that started it is long, the whole text is saved to a file in the system temp folder and the parent reads its start, its end and the file's path, so its context stays small",
   "author": {
     "name": "Tomas Roda"
   },
@@ -9,29 +9,37 @@
     "enabled": {
       "type": "boolean",
       "title": "Report diet",
-      "description": "Off: subagents hand back their answers as they always do.",
+      "description": "Off: subagent reports reach the parent whole, as they always do.",
       "default": true
     },
     "maxChars": {
       "type": "number",
-      "title": "Longest answer let through (characters)",
-      "description": "A subagent's final answer longer than this is held once. 200 to 100000.",
-      "default": 2000,
+      "title": "Longest report kept whole (characters)",
+      "description": "A subagent report longer than this is cut. 1000 to 100000.",
+      "default": 4000,
+      "min": 1000,
+      "max": 100000
+    },
+    "headChars": {
+      "type": "number",
+      "title": "Start kept (characters)",
+      "description": "How much of a cut report's start the parent reads. 200 to 100000; with the end kept, at most 90% of the longest report kept whole.",
+      "default": 2500,
       "min": 200,
       "max": 100000
     },
-    "summaryChars": {
+    "tailChars": {
       "type": "number",
-      "title": "Summary length (characters)",
-      "description": "The most the summary asked for may be. 100 to 100000, and no more than the longest answer let through.",
-      "default": 1500,
-      "min": 100,
+      "title": "End kept (characters)",
+      "description": "How much of a cut report's end the parent reads. 0 to 100000.",
+      "default": 800,
+      "min": 0,
       "max": 100000
     },
     "exclude": {
       "type": "string",
-      "title": "Subagent types to skip",
-      "description": "Subagent types whose answers are never held, separated by commas. Explore and Plan are read-only (they cannot write the file) and their answers are meant to be read in full. Empty: none skipped.",
+      "title": "Subagent types never cut",
+      "description": "Subagent types whose reports always reach the parent whole, separated by commas. Explore and Plan answers are search results and plans meant to be read in full. Empty: none.",
       "default": "Explore, Plan"
     }
   }

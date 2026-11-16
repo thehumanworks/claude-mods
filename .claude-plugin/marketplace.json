@@ -52,7 +52,7 @@
     {
       "name": "report-diet",
       "source": "./report-diet",
-      "description": "When a subagent is about to hand back a long report, it is held once and asked to write the full report to a file and return a short summary that ends with the file's path, so the parent's context stays small"
+      "description": "When a subagent's report reaching the agent that started it is long, the whole text is saved to a file in the system temp folder and the parent reads its start, its end and the file's path, so its context stays small"
     }
   ]
 }

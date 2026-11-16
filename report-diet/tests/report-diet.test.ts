@@ -1,119 +1,156 @@
 import { expect, test } from 'claude-code/testing'
-import { DEFAULT_EXCLUDE, fileNameFor, isErrorAnswer, isExcluded, noteFor, resolveConfig } from '../hooks/diet.js'
-import { engine, long } from './helpers.js'
+import { cut, DEFAULT_EXCLUDE, DEFAULTS, fileNameFor, FILE_RE, isExcluded, parseNotification, reportOf, resolveConfig } from '../hooks/diet.js'
+import { DIR, engine, long, textOf } from './helpers.js'
 
 test('settings: the defaults', async () => {
   const { config, problems } = resolveConfig({})
-  expect(config).toEqual({ enabled: true, maxChars: 2000, summaryChars: 1500, exclude: DEFAULT_EXCLUDE })
+  expect(config).toEqual({ enabled: true, maxChars: 4000, headChars: 2500, tailChars: 800, exclude: DEFAULT_EXCLUDE })
   expect(problems).toEqual([])
 })
 
-test('settings: values given as numbers or strings, out of range kept at the default and reported', async () => {
-  const ok = resolveConfig({ maxChars: '4000', summaryChars: 800, exclude: ' Explore , my-agent ,, ' })
-  expect(ok.config.maxChars).toBe(4000)
-  expect(ok.config.summaryChars).toBe(800)
-  expect(ok.config.exclude).toEqual(['Explore', 'my-agent'])
+test('settings: numbers or strings; out of range kept at the default; head and tail kept under the limit', async () => {
+  const ok = resolveConfig({ maxChars: '8000', headChars: 3000, tailChars: '0', exclude: ' Explore , reviewer ,, ' })
+  expect([ok.config.maxChars, ok.config.headChars, ok.config.tailChars]).toEqual([8000, 3000, 0])
+  expect(ok.config.exclude).toEqual(['Explore', 'reviewer'])
   expect(ok.problems).toEqual([])
-  const bad = resolveConfig({ maxChars: 50, summaryChars: 'lots' })
-  expect(bad.config.maxChars).toBe(2000)
-  expect(bad.config.summaryChars).toBe(1500)
+  const bad = resolveConfig({ maxChars: 10, headChars: 'lots' })
+  expect([bad.config.maxChars, bad.config.headChars]).toEqual([4000, 2500])
   expect(bad.problems.length).toBe(2)
-  // A summary longer than the limit is cut to the limit.
-  const over = resolveConfig({ maxChars: 1000, summaryChars: 3000 })
-  expect(over.config.summaryChars).toBe(1000)
+  const over = resolveConfig({ maxChars: 2000 })
+  expect([over.config.headChars, over.config.tailChars]).toEqual([1200, 400])
   expect(over.problems.length).toBe(1)
   expect(resolveConfig({ exclude: '' }).config.exclude).toEqual([])
-  expect(resolveConfig({ enabled: false }).config.enabled).toBe(false)
 })
 
-test('helpers: exclusion without case, error answers, a safe file name, the note', async () => {
+test('helpers: exclusion, file names, the cut, reading records and notifications', async () => {
   expect(isExcluded('explore', DEFAULT_EXCLUDE)).toBe(true)
-  expect(isExcluded('general-purpose', DEFAULT_EXCLUDE)).toBe(false)
   expect(isExcluded(undefined, DEFAULT_EXCLUDE)).toBe(false)
-  for (const a of ['API Error: 529 overloaded', '[Request interrupted by user]', 'Error: tool failed', 'Prompt is too long']) expect([a, isErrorAnswer(a)]).toEqual([a, true])
-  expect(isErrorAnswer(long())).toBe(false)
-  expect(fileNameFor('a/../b c')).toBe('subagent-a-b-c-full.md')
-  // Claude Code's Write tool refuses a subagent's file named like this.
-  expect(/^(REPORT|SUMMARY|FINDINGS|ANALYSIS).*\.md$/i.test(fileNameFor('a1b2c3'))).toBe(false)
-  expect(fileNameFor('///')).toBe('subagent-agent-full.md')
-  const note = noteFor('a1b2c3', 6010, resolveConfig({}).config)
-  expect(note).toContain('report-diet:')
-  expect(note).toContain('6,010 characters')
-  expect(note).toContain('`subagent-a1b2c3-full.md`')
-  expect(note).toContain('scratchpad directory')
-  expect(note).toContain('/tmp')
-  expect(note).toContain('at most 1,500 characters')
-  expect(note).toContain('start with the conclusion')
-  expect(note).toContain("end with the file's absolute path")
+  expect(isExcluded(undefined, ['general-purpose'])).toBe(true)
+  expect(fileNameFor('toolu_01AB')).toBe('agent-toolu_01AB.md')
+  expect(fileNameFor('../x y')).toBe('agent-_x_y.md')
+  expect(FILE_RE.test(fileNameFor('toolu_01AB'))).toBe(true)
+  const report = long()
+  const c = cut(report, '/t/agent-x.md', DEFAULTS)
+  expect(c.startsWith('Conclusion: the bug is in parse().')).toBe(true)
+  expect(c.endsWith('Files: src/parse.ts')).toBe(true)
+  expect(c).toContain('characters cut here. The whole report is in /t/agent-x.md; Read it')
+  expect(c.length < 3600).toBe(true)
+  expect(cut(report, '/p', { headChars: 500, tailChars: 0 })).not.toContain('Files:')
+  expect(reportOf({ status: 'completed', content: [{ type: 'text', text: 'a' }, { type: 'text', text: 'b' }] })).toBe('a\nb')
+  expect(reportOf({ status: 'async_launched' })).toBeUndefined()
+  expect(reportOf({ status: 'completed', content: [{ type: 'image' }] })).toBeUndefined()
+  expect(parseNotification('<task-notification><tool-use-id>t1</tool-use-id><status>completed</status><result>R</result></task-notification>'))
+    .toEqual({ toolUseId: 't1', status: 'completed', result: 'R', start: 82, end: 83 })
+  expect(parseNotification('<task-notification><status>completed</status></task-notification>')).toBeUndefined()
 })
 
-test('a long answer is held once, with the note', async ($, on) => {
-  const { subStop } = engine(on)
-  const held = await subStop($, long())
-  expect(held.block).toContain('report-diet: Your final answer is 6,010 characters')
-  expect(held.block).toContain('subagent-a1b2c3-full.md')
+test('a long foreground report is cut, and the whole text saved by tool_use_id', async ($, on) => {
+  const { agent, files } = engine(on)
+  const r = await agent($, { tool_use_id: 'toolu_A', subagent_type: 'general-purpose' })
+  const text = textOf(r)
+  const path = `${DIR}/agent-toolu_A.md`
+  expect(text).toContain(`The whole report is in ${path}`)
+  expect(text.startsWith('Conclusion:')).toBe(true)
+  expect(text.endsWith('Files: src/parse.ts')).toBe(true)
+  expect(text.length < 3600).toBe(true)
+  expect(files.get(path)!).toContain(long())
+  expect(files.get(path)!).toContain('general-purpose: Research')
 })
 
-test('a short answer is not held', async ($, on) => {
-  const { subStop } = engine(on)
-  expect((await subStop($, 'Done: the bug is in parse().')).block).toBeUndefined()
-  // Exactly at the limit is let through.
-  expect((await subStop($, 'y'.repeat(2000))).block).toBeUndefined()
+test('a short report is left whole', async ($, on) => {
+  const { agent, files } = engine(on, () => ({ status: 'completed', text: 'Done: the bug is in parse().' }))
+  const r = await agent($)
+  expect(textOf(r)).toBe('Done: the bug is in parse().')
+  expect(r.text).toBe('Done: the bug is in parse().')
+  expect(files.size).toBe(0)
 })
 
-test('a second long answer passes, whether or not stop_hook_active is set', async ($, on) => {
-  const { subStop } = engine(on)
-  expect((await subStop($, long())).block).toBeDefined()
-  expect((await subStop($, long(), { stop_hook_active: true })).block).toBeUndefined()
-  expect((await subStop($, long())).block).toBeUndefined()
-  // Another subagent is held once too.
-  expect((await subStop($, long(), { agent_id: 'other' })).block).toContain('subagent-other-full.md')
+test('an error result is never shaped', async ($, on) => {
+  const { agent, files } = engine(on, () => ({ isError: true, text: `Agent failed: ${'x'.repeat(9000)}` }))
+  const r = await agent($)
+  expect(r.isError).toBe(true)
+  expect(r.text!.length > 9000).toBe(true)
+  expect(files.size).toBe(0)
 })
 
-test('a stop that follows any hook block is let through', async ($, on) => {
-  const { subStop } = engine(on)
-  expect((await subStop($, long(), { stop_hook_active: true })).block).toBeUndefined()
+test('a failure to save leaves the result whole', async ($, on) => {
+  const { agent } = engine(on, undefined, { failWrite: true })
+  const r = await agent($)
+  expect(textOf(r)).toBe(long())
 })
 
-test('the main loop is untouched', async ($, on) => {
-  const { stop, subStop } = engine(on)
-  expect((await stop($, long(20_000))).block).toBeUndefined()
-  // A SubagentStop with no agent id is not a subagent's.
-  expect((await subStop($, long(), { agent_id: '' })).block).toBeUndefined()
+test('a save folder that is a link is not used', async ($, on) => {
+  const { agent, files } = engine(on, undefined, { dirIsLink: true })
+  expect(textOf(await agent($))).toBe(long())
+  expect(files.size).toBe(0)
 })
 
-test('an error or interrupted answer is never held', async ($, on) => {
-  const { subStop } = engine(on)
-  expect((await subStop($, `API Error: 500 ${'x'.repeat(5000)}`)).block).toBeUndefined()
-  expect((await subStop($, `[Request interrupted by user]\n${'x'.repeat(5000)}`, { agent_id: 'b' })).block).toBeUndefined()
-  expect((await subStop($, `Error: ${'x'.repeat(5000)}`, { agent_id: 'c' })).block).toBeUndefined()
-  // An error does not use up the one hold.
-  expect((await subStop($, long())).block).toBeDefined()
+test('excluded subagent types, other tools and a plugin call are left alone', async ($, on) => {
+  const { agent, files } = engine(on)
+  expect(textOf(await agent($, { subagent_type: 'Explore' }))).toBe(long())
+  expect(textOf(await agent($, { subagent_type: 'plan' }))).toBe(long())
+  expect(textOf(await agent($, { tool: 'Read', file_path: '/x' }))).toBe(long())
+  expect(textOf(await agent($, { tool_use_id: '' }))).toBe(long())
+  expect(files.size).toBe(0)
+  // The legacy name is cut too.
+  expect(textOf(await agent($, { tool: 'Task' }))).toContain('characters cut here')
 })
 
-test('excluded subagent types are let through', async ($, on) => {
-  const { subStop } = engine(on)
-  expect((await subStop($, long(), { agent_type: 'Explore' })).block).toBeUndefined()
-  expect((await subStop($, long(), { agent_type: 'Plan', agent_id: 'p' })).block).toBeUndefined()
+test('a background report is cut in its notification, for a call seen launched', async ($, on) => {
+  const { agent, notify, files } = engine(on, () => ({ status: 'async_launched' }))
+  const launched = await agent($, { tool_use_id: 'toolu_BG', run_in_background: true })
+  expect(launched.text).toBe('Async agent launched')
+  const text = await notify($, 'toolu_BG', long())
+  expect(text).toContain('<tool-use-id>toolu_BG</tool-use-id>')
+  expect(text).toContain(`The whole report is in ${DIR}/agent-toolu_BG.md`)
+  expect(text).toContain('<result>\nConclusion:')
+  expect(text).toContain('Files: src/parse.ts\n</result>')
+  expect(text.length < 4000).toBe(true)
+  expect(files.get(`${DIR}/agent-toolu_BG.md`)!).toContain(long())
+  // Once only: the same notification again is left whole.
+  expect(await notify($, 'toolu_BG', long())).toContain('Detail line 100')
 })
 
-test('a block from a hook beneath is kept, not replaced', async ($, on) => {
-  const { subStop } = engine(on, { block: 'keep going' })
-  expect((await subStop($, long())).block).toBe('keep going')
+test('notifications left whole: unknown calls, failed agents, short results, other origins', async ($, on) => {
+  const { agent, notify, files } = engine(on, () => ({ status: 'async_launched' }))
+  expect(await notify($, 'toolu_unknown', long())).toContain('Detail line 100')
+  await agent($, { tool_use_id: 'toolu_F' })
+  expect(await notify($, 'toolu_F', long(), 'failed')).toContain('Detail line 100')
+  await agent($, { tool_use_id: 'toolu_S' })
+  expect(await notify($, 'toolu_S', 'short')).toContain('<result>\nshort\n</result>')
+  await agent($, { tool_use_id: 'toolu_P' })
+  expect(await notify($, 'toolu_P', long(), 'completed', 'peer')).toContain('Detail line 100')
+  await agent($, { tool_use_id: 'toolu_X', subagent_type: 'Explore' })
+  expect(await notify($, 'toolu_X', long())).toContain('Detail line 100')
+  expect(files.size).toBe(0)
 })
 
-test('off: nothing is held', { options: { enabled: false } }, async ($, on) => {
-  const { subStop } = engine(on)
-  expect((await subStop($, long())).block).toBeUndefined()
+test('the temp folder comes from TMPDIR, and old files are cleaned', async ($, on) => {
+  const { agent, seen, files } = engine(on, undefined, { tmp: '/var/tmp/x/' })
+  for (let i = 0; i < 3; i++) files.set(`/var/tmp/x/claude-report-diet/agent-old${i}.md`, 'old')
+  files.set('/var/tmp/x/claude-report-diet/keep.txt', 'not ours')
+  await agent($, { tool_use_id: 'toolu_T' })
+  expect(files.has('/var/tmp/x/claude-report-diet/agent-toolu_T.md')).toBe(true)
+  const rm = seen.runs.find(a => a[0] === 'rm')!
+  // Files listed with mtime 0 are past the age limit: ours are removed, other files never.
+  expect(rm.slice(0, 3)).toEqual(['rm', '-f', '--'])
+  expect(rm).toContain('/var/tmp/x/claude-report-diet/agent-old0.md')
+  expect(rm.some(p => p.endsWith('keep.txt'))).toBe(false)
 })
 
-test('the options are used', { options: { maxChars: 500, summaryChars: 300, exclude: 'reviewer' } }, async ($, on) => {
-  const { subStop } = engine(on)
-  expect((await subStop($, 'z'.repeat(400))).block).toBeUndefined()
-  const held = await subStop($, 'z'.repeat(600))
-  expect(held.block).toContain('over the 500')
-  expect(held.block).toContain('at most 300 characters')
-  expect((await subStop($, long(), { agent_type: 'reviewer', agent_id: 'r' })).block).toBeUndefined()
-  // Explore is no longer excluded once the list is replaced.
-  expect((await subStop($, long(), { agent_type: 'Explore', agent_id: 'e' })).block).toBeDefined()
+test('off: nothing is cut', { options: { enabled: false } }, async ($, on) => {
+  const { agent, files } = engine(on)
+  expect(textOf(await agent($))).toBe(long())
+  expect(files.size).toBe(0)
+})
+
+test('the options are used', { options: { maxChars: 20000, headChars: 1000, tailChars: 0, exclude: 'reviewer' } }, async ($, on) => {
+  const { agent } = engine(on, p => ({ status: 'completed', text: p === 'big' ? long(600) : long() }))
+  // 9,000 characters is under 20,000.
+  expect(textOf(await agent($))).toBe(long())
+  const big = textOf(await agent($, { prompt: 'big' }))
+  expect(big).toContain('characters cut here')
+  expect(big.endsWith('Read it if you need the part cut out.]')).toBe(true)
+  expect(textOf(await agent($, { prompt: 'big', subagent_type: 'reviewer' }))).toBe(long(600))
+  expect(textOf(await agent($, { prompt: 'big', subagent_type: 'Explore' }))).toContain('characters cut here')
 })

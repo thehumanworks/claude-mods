@@ -1,13 +1,37 @@
 # report-diet
 
-Keeps long subagent reports out of the parent's context.
+Keeps long subagent reports from filling the parent's context.
 
-Each subagent's final answer goes into the context of the agent that started it, whole. One orchestrator session took in 21 reports totalling 129,000 characters (about 32,000 tokens) and had to compact. With this mod, when a subagent is about to hand back an answer longer than `maxChars`, its stop is held once with a note. The note asks it to:
+Each subagent's report goes into the context of the agent that started it, whole. In one orchestrator session, 21 reports came to 129,000 characters (about 32,000 tokens), and the session had to compact. With this mod, a report longer than `maxChars` is saved whole to a file, and the parent reads three parts:
 
-1. write the full report to `subagent-<agent id>-full.md`, in its scratchpad directory if it has one, otherwise in the system temp directory;
-2. reply with a summary of at most `summaryChars` characters that starts with the conclusion and ends with the file's absolute path.
+1. the first `headChars` characters (reports usually lead with the conclusion);
+2. a marker: `[report-diet: N of M characters cut here. The whole report is in <path>; Read it if you need the part cut out.]`
+3. the last `tailChars` characters (often the file list or next steps).
 
-The parent gets the summary, and can read the file when it needs the detail. No model is called: the mod only measures the answer.
+No model is called, and the subagent is never asked to do anything differently.
+
+## What Claude loses, and how to get it back
+
+Claude does not see the middle of a long report. If it needs that part, it reads the file named in the marker with the Read tool. The file holds the whole report, under a one-line comment that names the subagent type and the task.
+
+## Where the files go
+
+They go in `claude-report-diet/` in the system temp folder (`$TMPDIR`, else `/tmp`; `%TEMP%` on Windows). That folder is outside the repository, so nothing is committed by accident. Each file is named after the Agent call's `tool_use_id`: `agent-<tool_use_id>.md`. Files older than 7 days, and any past the newest 200, are removed at most once an hour. Only files with that name pattern are removed. If the folder is a symbolic link, nothing is saved.
+
+## What is cut, and what is left whole
+
+- **Cut:** the result of the model's own Agent call (also named `Task`), and the `<result>` of a background agent's `<task-notification>` for a call the mod saw launched. Background is the default for agents, so both paths matter.
+- **Left whole:**
+  - a report of `maxChars` or less;
+  - an error result;
+  - a notification whose status is not `completed`;
+  - a subagent type in `exclude`;
+  - a call another plugin made;
+  - any report the mod could not save. On any failure, the result goes through unchanged.
+
+## Why it no longer asks subagents to write files
+
+An earlier version held the subagent's stop and asked it to write its report to a file. That design was dropped. Claude Code deliberately blocks a subagent from writing report `.md` files ("Subagents should return findings as text, not write report files"), and the subagent's system prompt says the same. Working around that would override a product decision. This version works only on the parent's side, after the report has been handed back.
 
 ## Install
 
@@ -17,23 +41,16 @@ The parent gets the summary, and can read the file when it needs the detail. No 
 
 From a checkout, for one session: `claude --plugin-dir ./report-diet`.
 
-## Rules
-
-- It uses the `SubagentStop` hook (`classic.SubagentStop`), which sees the subagent's last message and can hold the stop. `turn.complete` sees the answer too, but cannot hold anything.
-- Each subagent is held at most once. If its second answer is still long, it goes through.
-- The main loop's Stop is never hooked.
-- An answer that is an API error or an interruption is never held, nor is a stop the person interrupted. A stop that another hook already holds, or that follows a hold, is let through.
-- The file name never starts with `report`: Claude Code's Write tool refuses a subagent's `.md` file whose name starts with REPORT, SUMMARY, FINDINGS or ANALYSIS.
-
 ## Settings
 
 | Setting | Default | What it does |
 | --- | --- | --- |
 | `enabled` | `true` | Off: no hook at all. |
-| `maxChars` | `2000` | An answer longer than this is held once. 200 to 100,000. |
-| `summaryChars` | `1500` | The longest summary asked for. 100 to 100,000, and no more than `maxChars`. |
-| `exclude` | `Explore, Plan` | Subagent types never held, separated by commas, any case. Empty: none. |
+| `maxChars` | `4000` | A report longer than this is cut. 1,000 to 100,000. |
+| `headChars` | `2500` | Characters of the start kept. |
+| `tailChars` | `800` | Characters of the end kept; 0 keeps none. |
+| `exclude` | `Explore, Plan` | Subagent types never cut, separated by commas, any case. Empty: none. |
 
-`Explore` and `Plan` are skipped by default because they are read-only: they have no Write tool, so they could not write the file. What they find is also meant to be read in full by the agent that asked.
+Why 4,000: in the session above, reports averaged 6,000 characters and reached 8,800 at most. With this limit, most of them are cut, while short answers are never touched. A cut report comes to about 3,500 characters, roughly half an average report. If `headChars` plus `tailChars` is more than 90% of `maxChars`, both are scaled down to 60% and 20% of it. A value out of range keeps its default, and the problem is logged when the session starts.
 
-A value out of range keeps its default, and the problem is logged when the session starts.
+`Explore` and `Plan` are left whole because their answers (search results and plans) are meant to be read in full by the agent that asked.

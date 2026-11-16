@@ -1,8 +1,10 @@
 {
   "name": "output-shaper",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "When a Bash command prints a lot, Claude reads its first and last lines, the line and character counts, and the path of the whole output with a hint to Grep or Read it",
-  "author": { "name": "Tomas Roda" },
+  "author": {
+    "name": "Tomas Roda"
+  },
   "userConfig": {
     "threshold": {
       "type": "number",
@@ -33,6 +35,12 @@
       "title": "Folder for saved output",
       "description": "Where the whole output is saved when Claude Code did not save it already, absolute or relative to the session's folder. Empty: .claude/output-shaper in the session's folder, kept out of git by a .gitignore of its own.",
       "default": ""
+    },
+    "keepFailingTail": {
+      "type": "boolean",
+      "title": "Keep the end of failing commands",
+      "description": "On: Claude's Bash commands are wrapped so their whole output is also written to a file, and when a command fails and Claude Code cut its output, Claude reads the real last lines and the file's path. Off: commands run exactly as Claude wrote them.",
+      "default": true
     }
   }
 }

@@ -8,9 +8,11 @@ export type Config = {
   tailLines: number
   /** Where output Claude Code did not save is saved; empty: DEFAULT_SAVE_DIR in the session's folder. */
   saveDir: string
+  /** Wrap Claude's Bash commands so the real end of a failing one's output is kept. */
+  keepFailingTail: boolean
 }
 
-export const DEFAULTS: Config = { threshold: 20_000, headLines: 40, tailLines: 60, saveDir: '' }
+export const DEFAULTS: Config = { threshold: 20_000, headLines: 40, tailLines: 60, saveDir: '', keepFailingTail: true }
 export const DEFAULT_SAVE_DIR = '.claude/output-shaper'
 /** A kept line longer than this is cut. */
 export const MAX_LINE_CHARS = 500
@@ -41,6 +43,8 @@ export function resolveConfig(options: Readonly<Record<string, unknown>>): { con
     } else config[key] = Math.round(value)
   }
   if (typeof options.saveDir === 'string') config.saveDir = options.saveDir.trim()
+  if (typeof options.keepFailingTail === 'boolean') config.keepFailingTail = options.keepFailingTail
+  else if (options.keepFailingTail === 'false' || options.keepFailingTail === 'true') config.keepFailingTail = options.keepFailingTail === 'true'
   return { config, problems }
 }
 
@@ -175,6 +179,52 @@ export function isSessionToolResult(path: string, sessionId: string): boolean {
   const p = path.replace(/\\/g, '/')
   if (!isAbsolute(p) || p.split('/').some(seg => seg === '.' || seg === '..')) return false
   return new RegExp(`/projects/[^/]+/${sessionId}/tool-results/[^/]+$`).test(p)
+}
+
+/** The most characters the failing tail's note gives the last lines. */
+export const TAIL_NOTE_MAX_CHARS = 10_000
+/** The folder for the wrap's files under DEFAULT_SAVE_DIR, when no saveDir is set. */
+export const TAIL_SUBDIR = 'tails'
+/** Wrap files kept at most, newest first, and for how long. */
+export const TAIL_FILES_MAX = 20
+export const TAIL_FILE_MAX_AGE_MS = 24 * 60 * 60 * 1000
+
+/** The wrap's file name for a tool_use_id; only names of this form are ever cleaned up. */
+export function tailFileNameFor(toolUseId: string): string {
+  return `tail-${fileNameFor(toolUseId)}`
+}
+export const TAIL_FILE_RE = /^tail-[A-Za-z0-9_-]{1,100}\.txt$/
+
+/** Claude Code's marker where it cut the middle of an error's output. */
+const CUT_MARKER = /\n\n\.\.\. \[\d+ characters truncated\] \.\.\.\n\n/
+const ANSI = /\x1b\[[0-9;?]*[ -\/]*[@-~]/g
+
+/**
+ * Whether what Claude read lost the real end of the whole output: the whole is
+ * longer than what Claude read, and either Claude Code's cut marker is there or
+ * the whole's last line is not at the end of what Claude read. The marker alone
+ * proves nothing, as a command can print it.
+ */
+export function lostTheEnd(read: string, wholeSize: number, wholeLines: readonly string[]): boolean {
+  if (wholeSize <= read.length) return false
+  if (CUT_MARKER.test(read)) return true
+  const last = [...wholeLines].reverse().find(l => l.trim() !== '')
+  if (last === undefined) return false
+  return !read.slice(-4_000).replace(ANSI, '').includes(last.replace(ANSI, '').trimEnd())
+}
+
+/** The note added to a failing command whose output Claude Code cut: the real last lines and the path. */
+export function tailNote(ex: Excerpt, whole: Whole): string {
+  return [
+    `output-shaper: Claude Code cut this command's output, and its real end was not in the result. The whole output (${fmt(whole.lines)} lines, ${fmt(whole.size)} ${whole.unit}) is in ${whole.path}. These are its last ${fmt(ex.tail.length)} lines:`,
+    ...ex.tail,
+    `Grep that file for a pattern or Read it with offset and limit rather than running the command again.`,
+  ].join('\n')
+}
+
+/** The note added to a command whose output was cut although it did not fail, when no other copy is kept. */
+export function keptNote(whole: Whole): string {
+  return `output-shaper: the result above was cut; the whole output (${fmt(whole.lines)} lines, ${fmt(whole.size)} ${whole.unit}) is in ${whole.path}. Grep it or Read it with offset and limit rather than running the command again.`
 }
 
 /** A file name from a tool_use_id: letters, digits, `_` and `-` only. */

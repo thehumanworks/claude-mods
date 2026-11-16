@@ -6,6 +6,7 @@ import type { EngineInterface, Register, ToolCallResult } from 'claude-code'
 import {
   DEFAULT_SAVE_DIR,
   errorNote,
+  hasBashPreToolUse,
   keptNote,
   lostTheEnd,
   TAIL_FILE_MAX_AGE_MS,
@@ -157,6 +158,14 @@ async function planTail($: $, rt: Runtime, toolUseId: string, e: { command: stri
   // The sandbox decides by the command line too (its excluded commands), and may not let the shell write the file.
   const sandbox = (await $.settings.read({ key: 'sandbox' }).catch(() => undefined)) as { enabled?: unknown } | undefined
   if (sandbox?.enabled === true) return undefined
+  // A PreToolUse hook of the person's that fires for Bash may guard by the command line (`^git push`), and would
+  // read the wrap instead: never weaken it. Settings files only (user, project, local, flag, policy, merged); other
+  // plugins' hooks cannot be seen through the API.
+  const hooks = await $.settings.read({ key: 'hooks' }).catch(() => ({ PreToolUse: [{}] }))
+  if (hasBashPreToolUse(hooks)) {
+    debug($, 'not wrapped: a PreToolUse hook in the settings fires for Bash and may read the command line')
+    return undefined
+  }
   // Only a command the session would run with nobody asked: a person is never shown the wrapped line.
   const { decision } = await $.tool.check({ tool: 'Bash', input: { command: e.command } })
   if (decision !== 'allow') {

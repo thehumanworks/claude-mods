@@ -39,8 +39,8 @@
     "keepFailingTail": {
       "type": "boolean",
       "title": "Keep the end of failing commands",
-      "description": "On: Claude's Bash commands are wrapped so their whole output is also written to a file, and when a command fails and Claude Code cut its output, Claude reads the real last lines and the file's path. Off: commands run exactly as Claude wrote them.",
-      "default": true
+      "description": "Off by default. On: Claude's Bash commands are wrapped so their whole output is also written to a file, and when a command fails and Claude Code cut its output, Claude reads the real last lines and the file's path. Never applies while a PreToolUse hook in your settings fires for Bash. Off: commands run exactly as Claude wrote them.",
+      "default": false
     }
   }
 }

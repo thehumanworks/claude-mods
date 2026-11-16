@@ -12,7 +12,7 @@ export type Config = {
   keepFailingTail: boolean
 }
 
-export const DEFAULTS: Config = { threshold: 20_000, headLines: 40, tailLines: 60, saveDir: '', keepFailingTail: true }
+export const DEFAULTS: Config = { threshold: 20_000, headLines: 40, tailLines: 60, saveDir: '', keepFailingTail: false }
 export const DEFAULT_SAVE_DIR = '.claude/output-shaper'
 /** A kept line longer than this is cut. */
 export const MAX_LINE_CHARS = 500
@@ -179,6 +179,31 @@ export function isSessionToolResult(path: string, sessionId: string): boolean {
   const p = path.replace(/\\/g, '/')
   if (!isAbsolute(p) || p.split('/').some(seg => seg === '.' || seg === '..')) return false
   return new RegExp(`/projects/[^/]+/${sessionId}/tool-results/[^/]+$`).test(p)
+}
+
+/**
+ * Whether settings hooks (`{ PreToolUse: [{ matcher, hooks }] }`) hold a
+ * PreToolUse hook that can fire for Bash: no matcher, a wildcard, a matcher
+ * naming Bash, or one that matches it as a pattern. Such a hook may guard by
+ * the command line, which the wrap changes, so the mod then never wraps.
+ */
+export function hasBashPreToolUse(hooks: unknown): boolean {
+  if (hooks === null || typeof hooks !== 'object') return false
+  const entries = (hooks as Record<string, unknown>).PreToolUse
+  if (!Array.isArray(entries)) return false
+  return entries.some(entry => {
+    if (entry === null || typeof entry !== 'object') return true
+    const matcher = (entry as { matcher?: unknown }).matcher
+    if (matcher === undefined || matcher === null || matcher === '') return true
+    if (typeof matcher !== 'string') return true
+    const m = matcher.trim()
+    if (m === '*' || /bash/i.test(m)) return true
+    try {
+      return new RegExp(`^(?:${m})$`).test('Bash')
+    } catch {
+      return true
+    }
+  })
 }
 
 /** The most characters the failing tail's note gives the last lines. */

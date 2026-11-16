@@ -11,7 +11,7 @@ With this mod, once the output is over the threshold Claude reads:
 - the last 60 lines,
 - the path of the whole output, with a one-line hint to Grep it or Read a range of it instead of running the command again.
 
-When a command fails and Claude Code cuts its output, Claude also reads the real last lines and the path of the whole output (see [Keeping the end of a failing command](#keeping-the-end-of-a-failing-command)). For that, the mod rewrites the command line of Claude's Bash calls.
+When a command fails and Claude Code cuts its output, Claude also reads the real last lines and the path of the whole output (see [Keeping the end of a failing command](#keeping-the-end-of-a-failing-command)). This is off by default; when on, the mod rewrites the command line of Claude's Bash calls.
 
 No model calls, no network.
 
@@ -33,7 +33,7 @@ Set on the screen the install shows, and afterwards in `/config`.
 | Lines from the start (`headLines`) | `40` | How many of the first lines Claude reads. 0 to 500. |
 | Lines from the end (`tailLines`) | `60` | How many of the last lines Claude reads. 1 to 1,000. |
 | Folder for saved output (`saveDir`) | empty | Where the whole output is saved when Claude Code did not save it already. Absolute, or relative to the session's folder. Empty means `.claude/output-shaper/<session id>` in the session's folder, and `.claude/output-shaper/tails` for the files of failing commands. A folder you set is used as it is: the mod writes only the output files there (`tail-<tool_use_id>.txt` for failing commands). |
-| Keep the end of failing commands (`keepFailingTail`) | on | Wraps Claude's Bash commands so a failing command's whole output is kept and its real end reaches Claude. Off: every command runs exactly as Claude wrote it, and the mod behaves as it did before this setting existed. |
+| Keep the end of failing commands (`keepFailingTail`) | off | Wraps Claude's Bash commands so a failing command's whole output is kept and its real end reaches Claude. Off: every command runs exactly as Claude wrote it, and the mod behaves as it did before this setting existed. |
 
 A number out of range keeps its default and says so in the log.
 
@@ -83,6 +83,10 @@ Tests:       2 failed, 412 passed, 414 total
 
 ## Keeping the end of a failing command
 
+**Off by default.** The feature rewrites the command line, so a safety guard of your own that matches a command by its start (`^git push` in a PreToolUse hook or another mod) sees the rewritten line, misses it, and lets the call through. The mod skips the wrap when it sees such a hook in your settings files, but it cannot see hooks that other plugins add, so it is yours to turn on.
+
+To turn it on, set **Keep the end of failing commands** (`keepFailingTail`) to on, on the screen the install shows or later in `/config`.
+
 Claude Code cuts a Bash call's output at 30,000 characters before any hook sees it, and saves no file for a failing command. A failing test run with 49,000 characters of output reached Claude as `Exit code 1`, its first 5,000 characters and the last 5,000 of its first 30,000: the failed test at the very end was lost.
 
 So the mod has the shell keep a copy. **It rewrites the command line** of each Bash call Claude makes in the main conversation (not a subagent's, not another plugin's), before Claude Code runs it. The command stays byte for byte as Claude wrote it, inside a `{ ...; }` group in the same shell, on its own lines:
@@ -115,6 +119,7 @@ A command is **never wrapped** (it runs exactly as written) when any of these ho
 - It reads stdin or the terminal (`read`, `select`, `mapfile`, `coproc`, `/dev/stdin`, `/dev/tty`), or starts something interactive: an editor, a pager, `ssh`, `sudo`, a database shell, a REPL with no script, `git commit`/`rebase`/`merge`/`tag`, `git add -p`, `docker`/`kubectl` `run`/`exec` with `-i` or `-t`.
 - It uses, outside a `( ... )` subshell, a builtin that acts on the shell itself: `exit`, `exec`, `return`, `trap`, `set`, `shopt`, `wait`, `eval`, job control and the like.
 - `bash -n` refuses the command or its wrap, the command is over 20,000 characters, or the sandbox is on (its excluded commands are matched by command line).
+- Any settings file (user `~/.claude/settings.json`, project `.claude/settings.json`, `.claude/settings.local.json`, `--settings`, managed policy) holds a `PreToolUse` hook that can fire for Bash: no matcher, `*`, a matcher naming Bash or matching it as a pattern. The debug log then says `not wrapped: a PreToolUse hook in the settings fires for Bash`. If the settings cannot be read, nothing is wrapped.
 - The session would not run the command as written with nobody asked (`$.tool.check` says anything but `allow`). So a permission prompt only ever shows the command Claude wrote.
 
 Permissions: Claude Code checks the wrapped line, which a rule such as `Bash(npm test:*)` does not match. Since the command itself was allowed, the mod answers the same for the wrapped line when the check would only ask; if something stronger refuses the wrapped line (a deny rule, a hook's ask or deny, an option's own ask such as `permissions.blockReadsOutsideWorkingDirectories`), the call runs again as Claude wrote it, and only when that refusal stood: if a hook placed above the mod answers over it and the wrapped line runs, the command is not run a second time. The transcript and Claude both keep the command as Claude wrote it.
@@ -128,7 +133,8 @@ Permissions: Claude Code checks the wrapped line, which a rule such as `Bash(npm
 - When Claude Code cut its own file at 64 MiB, the counts cover only the part it saved.
 - An output Claude really wanted whole (`cat` of a file of 20,000 characters) is shaped too. Claude can Read the saved file, or the original file. Raise the threshold if this happens often.
 - An error is passed as Claude Code made it: cut to its first and last 5,000 characters, and when the output went over the inline limit, cut at that limit first. Only a wrapped command gets its real end back, as a note beside the result; a command left unwrapped (see the list above) gets nothing more.
-- The wrap is a different command line from the one Claude wrote, so anything in Claude Code that reads the command line sees the wrap: the permission check (handled above), a `PreToolUse` hook of your own, and the classifier of auto mode. A hook that matches a command by its start (`^npm test`) no longer matches; one that matches a part of it still does. In plan mode a wrapped read-only command may be asked about where the command itself was not.
+- Hooks that other plugins add cannot be seen: neither `PreToolUse` hooks in a plugin's `hooks/hooks.json` nor another mod's `tool.call` or `tool.check` hooks (the hooks API lists none of them). Such a guard that matches a command by its start sees the wrap and misses it, and the mod then allows the call as the command itself is allowed. This is why the feature is off by default.
+- The wrap is a different command line from the one Claude wrote, so anything in Claude Code that reads the command line sees the wrap: the permission check (handled above), another plugin's hooks (above), and the classifier of auto mode. A hook that matches a command by its start (`^npm test`) no longer matches; one that matches a part of it still does. In plan mode a wrapped read-only command may be asked about where the command itself was not.
 - A program the command leaves running in the background that keeps the output open (a daemon that does not close stdout) delays the end of the call by up to 3 seconds, and output it writes after that is not in the file.
 - Not on Windows, and not under the sandbox: commands there are never wrapped.
 - Only Bash. PowerShell and other tools are not shaped.

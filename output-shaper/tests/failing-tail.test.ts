@@ -8,6 +8,8 @@ const SESSION = 's1'
 const BASE = `${ROOT}/.claude/output-shaper`
 const TAILS = `${BASE}/tails`
 const FILE = `${TAILS}/tail-toolu_1.txt`
+/** The failing tail is off by default; these tests turn it on. */
+const ON = { keepFailingTail: true }
 
 /** `n` lines, `prefix 1` to `prefix n`, each closed by a newline. */
 const numbered = (n: number, prefix = 'test_case') => Array.from({ length: n }, (_, i) => `${prefix} ${i + 1} ... ok`).join('\n') + '\n'
@@ -32,6 +34,8 @@ type Options = {
   asWritten?: Verdict
   /** The verdict for the wrapped line on the real call. Default: allow. */
   wrapped?: Verdict
+  /** The merged settings the mod reads. Default: none. */
+  settings?: Record<string, unknown>
 }
 
 /** The command the wrap holds, or the command itself when it is not wrapped. */
@@ -55,6 +59,7 @@ function engine(on: On, answer: (command: string) => Answer & { full?: string },
   const seen = { commands: [] as string[], writes: [] as string[], removed: [] as string[], checks: [] as string[], logs: [] as string[] }
   on('session.root', () => ({ value: ROOT }))
   on('session.id', () => ({ value: SESSION }))
+  on('settings.read', () => ({ value: options.settings ?? {} }) as never)
   on('tool.check', (_, e) => {
     const command = (e.input as { command: string }).command
     seen.checks.push(e.tool_use_id === undefined ? `query: ${command}` : `call: ${command.includes(WRAP_PREFIX) ? 'wrapped' : command}`)
@@ -125,7 +130,7 @@ const failed = (output: string, code = 1): Answer & { full: string } => {
 }
 const ok = (stdout: string): Answer => ({ result: { stdout, stderr: '', interrupted: false }, text: stdout, ref: 7 })
 
-test('a failing command whose output Claude Code cut: Claude reads its real last lines and the path', async ($, on) => {
+test('a failing command whose output Claude Code cut: Claude reads its real last lines and the path', { options: ON }, async ($, on) => {
   const { files, seen } = engine(on, () => failed(FAILING))
   const r = await bash($, './t.sh')
   // The wrapped line ran, holding the command as written.
@@ -148,7 +153,7 @@ test('a failing command whose output Claude Code cut: Claude reads its real last
   expect(seen.removed).toEqual([])
 })
 
-test('the note keeps to tailLines, and to its character cap', { options: { tailLines: 1000 } }, async ($, on) => {
+test('the note keeps to tailLines, and to its character cap', { options: { ...ON, tailLines: 1000 } }, async ($, on) => {
   const long = Array.from({ length: 2000 }, (_, i) => `${i} ${'x'.repeat(400)}`).join('\n') + '\nFAILED: last\n'
   engine(on, () => failed(long))
   const [note] = (await bash($, 'make test')).context ?? []
@@ -156,7 +161,7 @@ test('the note keeps to tailLines, and to its character cap', { options: { tailL
   expect(note).toContain('FAILED: last')
 })
 
-test('a failing command Claude Code did not cut: no note, and the file is removed', async ($, on) => {
+test('a failing command Claude Code did not cut: no note, and the file is removed', { options: ON }, async ($, on) => {
   const { files, seen } = engine(on, () => failed('short failure\nFAILED: test_x\n', 2))
   const r = await bash($, 'pytest -x')
   expect(r.context).toBeUndefined()
@@ -165,7 +170,7 @@ test('a failing command Claude Code did not cut: no note, and the file is remove
   expect(files.has(FILE)).toBe(false)
 })
 
-test('a cut marker the command printed itself, with nothing lost, adds no note', async ($, on) => {
+test('a cut marker the command printed itself, with nothing lost, adds no note', { options: ON }, async ($, on) => {
   const output = 'a\n\n... [999 characters truncated] ...\n\nb\n'
   const text = `Exit code 1\n${output}`
   engine(on, () => ({ isError: true, result: text, text, full: output }))
@@ -185,7 +190,7 @@ test('a cut that kept the real end (a failure under the inline limit) is told by
   expect(lostTheEnd('x\n\u001b[31mFAILED\u001b[0m', 50, ['a', '\u001b[31mFAILED\u001b[0m'.padEnd(60)])).toBe(false)
 })
 
-test('a command that succeeds: the result is Claude Code\'s, and the file is removed', async ($, on) => {
+test('a command that succeeds: the result is Claude Code\'s, and the file is removed', { options: ON }, async ($, on) => {
   const { files, seen } = engine(on, () => ok('all good\n'))
   const r = await bash($, 'npm test')
   expect(r).toEqual(ok('all good\n') as never)
@@ -193,7 +198,7 @@ test('a command that succeeds: the result is Claude Code\'s, and the file is rem
   expect(files.has(FILE)).toBe(false)
 })
 
-test('a big success Claude Code saved itself is shaped as before, and the wrap\'s copy is removed', async ($, on) => {
+test('a big success Claude Code saved itself is shaped as before, and the wrap\'s copy is removed', { options: ON }, async ($, on) => {
   const core = `/home/u/.claude/projects/-repo/${SESSION}/tool-results/toolu_1.txt`
   const whole = numbered(3000)
   const { files, seen } = engine(on, () => ({ ...ok(whole.slice(0, 2000)), result: { stdout: whole.slice(0, 2000), stderr: '', interrupted: false, persistedOutputPath: core }, full: whole }))
@@ -204,7 +209,7 @@ test('a big success Claude Code saved itself is shaped as before, and the wrap\'
   expect(seen.removed).toEqual([FILE])
 })
 
-test('a success whose output was cut with no copy kept: the file stays and Claude gets its path', async ($, on) => {
+test('a success whose output was cut with no copy kept: the file stays and Claude gets its path', { options: ON }, async ($, on) => {
   const whole = `${numbered(10)}END\n`
   const { files } = engine(on, () => ({ ...ok('test_case 1 ... ok'), full: whole }))
   const r = await bash($, 'npm test')
@@ -212,7 +217,7 @@ test('a success whose output was cut with no copy kept: the file stays and Claud
   expect(files.get(FILE)).toBe(whole)
 })
 
-test('the off switch: the command runs exactly as written and nothing is written', { options: { keepFailingTail: false } }, async ($, on) => {
+test('off by default: the command runs exactly as written and nothing is written', async ($, on) => {
   const { seen } = engine(on, () => failed(FAILING))
   const r = await bash($, './t.sh')
   expect(seen.commands).toEqual(['./t.sh'])
@@ -221,7 +226,28 @@ test('the off switch: the command runs exactly as written and nothing is written
   expect(seen.checks.filter(c => c.startsWith('query'))).toEqual([])
 })
 
-test('background commands, heredocs and other unsafe commands are never wrapped', async ($, on) => {
+test('on, with no PreToolUse hook in the settings: the command is wrapped', { options: ON }, async ($, on) => {
+  const { seen } = engine(on, () => ok('x'), { settings: { hooks: { PostToolUse: [{ matcher: 'Bash', hooks: [] }], PreToolUse: [{ matcher: 'Edit|Write', hooks: [] }] } } })
+  await bash($, 'npm test')
+  expect(unwrap(seen.commands[0]!)).toEqual({ original: 'npm test', file: FILE })
+})
+
+test('on, but a PreToolUse hook in the settings fires for Bash: never wrapped, said once in the debug log', { options: ON }, async ($, on) => {
+  const guards = [{ matcher: 'Bash', hooks: [] }, { matcher: '*', hooks: [] }, { hooks: [] }, { matcher: 'Edit|Bash', hooks: [] }, { matcher: '.*', hooks: [] }]
+  const options: Options = {}
+  const { seen } = engine(on, () => failed(FAILING), options)
+  for (const [i, guard] of guards.entries()) {
+    options.settings = { hooks: { PreToolUse: [guard] } }
+    const r = await bash($, './t.sh')
+    expect(seen.commands.at(-1)).toBe('./t.sh')
+    expect(r.context).toBeUndefined()
+    expect(seen.logs.filter(l => l.includes('PreToolUse hook')).length).toBe(i + 1)
+  }
+  expect(seen.writes).toEqual([])
+  expect(seen.checks.filter(c => c.startsWith('query'))).toEqual([])
+})
+
+test('background commands, heredocs and other unsafe commands are never wrapped', { options: ON }, async ($, on) => {
   const { seen } = engine(on, () => ok('x'))
   const commands = ['npm run dev &', 'sleep 1 & echo hi', "cat <<'EOF' > a.txt\nhi\nEOF", 'read -r line', 'vim a.txt', 'exit 3', 'python3', 'git commit -m x', 'docker run -it ubuntu']
   for (const command of commands) await bash($, command)
@@ -230,14 +256,14 @@ test('background commands, heredocs and other unsafe commands are never wrapped'
   expect(seen.writes).toEqual([])
 })
 
-test('a command not allowed outright is not wrapped, so a person is only ever asked about the command as written', { }, async ($, on) => {
+test('a command not allowed outright is not wrapped, so a person is only ever asked about the command as written', { options: ON }, async ($, on) => {
   const { seen } = engine(on, () => ok('x'), { asWritten: 'ask' })
   await bash($, 'npm test')
   expect(seen.commands).toEqual(['npm test'])
   expect(seen.checks).toEqual(['query: npm test', 'call: npm test'])
 })
 
-test('a wrapped line the rules would ask about is allowed, as the command it wraps is', async ($, on) => {
+test('a wrapped line the rules would ask about is allowed, as the command it wraps is', { options: ON }, async ($, on) => {
   const { seen } = engine(on, () => failed(FAILING), { wrapped: 'ask' })
   const r = await bash($, './t.sh')
   expect(seen.checks).toEqual(['query: ./t.sh', 'call: wrapped'])
@@ -245,7 +271,7 @@ test('a wrapped line the rules would ask about is allowed, as the command it wra
   expect(r.context?.[0]).toContain('FAILED: test_widget_overflow')
 })
 
-test('a wrapped line that is denied runs again as written', async ($, on) => {
+test('a wrapped line that is denied runs again as written', { options: ON }, async ($, on) => {
   const { seen, files } = engine(on, () => failed(FAILING), { wrapped: 'deny' })
   const r = await bash($, './t.sh')
   expect(seen.commands.length).toBe(1) // the denied line never reached Bash
@@ -255,13 +281,13 @@ test('a wrapped line that is denied runs again as written', async ($, on) => {
   expect(files.has(FILE)).toBe(false)
 })
 
-test('a command the shell would read differently is not wrapped', async ($, on) => {
+test('a command the shell would read differently is not wrapped', { options: ON }, async ($, on) => {
   const { seen } = engine(on, () => ok('x'))
   await bash($, 'echo BAD-SYNTAX')
   expect(seen.commands).toEqual(['echo BAD-SYNTAX'])
 })
 
-test('another plugin\'s call and a subagent\'s are never wrapped', { plugins: [] }, async ($, on) => {
+test('another plugin\'s call and a subagent\'s are never wrapped', { options: ON, plugins: [] }, async ($, on) => {
   const { seen } = engine(on, () => ok('x'))
   await bash($, 'npm test', { agentId: 'a1' })
   expect(seen.commands).toEqual(['npm test'])
@@ -278,20 +304,20 @@ const caller: { name: string; register: Register } = {
   },
 }
 
-test('a call another plugin makes is not wrapped', { plugins: [caller] }, async ($, on) => {
+test('a call another plugin makes is not wrapped', { options: ON, plugins: [caller] }, async ($, on) => {
   const { seen } = engine(on, () => ok('x'))
   on('turn.complete', (_, e) => ({ text: e.answer }))
   await $.turn.complete({ answer: 'ok', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as never)
   expect(seen.commands).toEqual(['npm test'])
 })
 
-test('a link put in place of the file is not read', async ($, on) => {
+test('a link put in place of the file is not read', { options: ON }, async ($, on) => {
   const { links } = engine(on, () => failed(FAILING))
   links.add(FILE)
   expect((await bash($, './t.sh')).context).toBeUndefined()
 })
 
-test('old wrap files are cleaned: past a day, and past the newest 20; nothing else in the folder', async ($, on) => {
+test('old wrap files are cleaned: past a day, and past the newest 20; nothing else in the folder', { options: ON }, async ($, on) => {
   const { files, mtimes, seen } = engine(on, () => ok('fine'))
   const now = Date.now()
   for (let i = 0; i < 25; i++) {
@@ -313,7 +339,7 @@ test('old wrap files are cleaned: past a day, and past the newest 20; nothing el
   expect(seen.removed).toContain(FILE)
 })
 
-test('a saveDir of its own holds the wrap files beside the saved output', { options: { saveDir: '/tmp/shaped' } }, async ($, on) => {
+test('a saveDir of its own holds the wrap files beside the saved output', { options: { ...ON, saveDir: '/tmp/shaped' } }, async ($, on) => {
   const { seen } = engine(on, () => failed(FAILING))
   const r = await bash($, './t.sh')
   expect(unwrap(seen.commands[0]!).file).toBe('/tmp/shaped/tail-toolu_1.txt')

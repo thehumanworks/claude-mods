@@ -48,6 +48,11 @@
       "name": "efficiency",
       "source": "./efficiency",
       "description": "Records per repository, across sessions, where Claude Code wastes context or calls (MCP servers loaded but never called, failed and repeated calls, large results, compactions), and /efficiency ranks it with the exact settings file and key to change; on /efficiency only, opus adds up to 5 recommendations drawn from those fixes"
+    },
+    {
+      "name": "report-diet",
+      "source": "./report-diet",
+      "description": "When a subagent is about to hand back a long report, it is held once and asked to write the full report to a file and return a short summary that ends with the file's path, so the parent's context stays small"
     }
   ]
 }

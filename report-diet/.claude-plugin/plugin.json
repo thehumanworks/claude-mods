@@ -1,0 +1,38 @@
+{
+  "name": "report-diet",
+  "version": "0.1.0",
+  "description": "When a subagent is about to hand back a long report, it is held once and asked to write the full report to a file and return a short summary that ends with the file's path, so the parent's context stays small",
+  "author": {
+    "name": "Tomas Roda"
+  },
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Report diet",
+      "description": "Off: subagents hand back their answers as they always do.",
+      "default": true
+    },
+    "maxChars": {
+      "type": "number",
+      "title": "Longest answer let through (characters)",
+      "description": "A subagent's final answer longer than this is held once. 200 to 100000.",
+      "default": 2000,
+      "min": 200,
+      "max": 100000
+    },
+    "summaryChars": {
+      "type": "number",
+      "title": "Summary length (characters)",
+      "description": "The most the summary asked for may be. 100 to 100000, and no more than the longest answer let through.",
+      "default": 1500,
+      "min": 100,
+      "max": 100000
+    },
+    "exclude": {
+      "type": "string",
+      "title": "Subagent types to skip",
+      "description": "Subagent types whose answers are never held, separated by commas. Explore and Plan are read-only (they cannot write the file) and their answers are meant to be read in full. Empty: none skipped.",
+      "default": "Explore, Plan"
+    }
+  }
+}

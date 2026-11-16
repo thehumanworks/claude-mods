@@ -47,6 +47,15 @@ The mod writes out a rewrite when it can do so mechanically:
 
 Some commands can't be rewritten this way, such as pipes into git, loops, heredocs, nested substitutions and `sh -c`. For those, the note names the likely trigger and lists the rules.
 
+The guard is there on purpose. The mod only helps Claude comply with it and never helps Claude get around it:
+
+- Some refusals are about where git runs: changing directory, the shared checkout, another worktree, GIT_* variables or `-C`. For these, the note offers no rewrite. It only repeats Claude Code's remedy: run git in your own worktree, `<path>`.
+- No rewrite is offered when any of these is true:
+  - a `cd` or `-C` directory resolves outside the worktree. Paths are resolved lexically: `..` is folded and symlinks are not followed.
+  - a segment sets, exports or unsets an environment variable, `GIT_*` included.
+  - git has `-c`, `--git-dir`, `--work-tree`, `--namespace`, `--config-env`, `--bare` or another global option the mod doesn't know to be harmless.
+- In every rewrite, each git command has exactly one `-C`, and it is the worktree or a folder under it.
+
 ## How it works
 
 | Question | Answer |

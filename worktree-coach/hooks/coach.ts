@@ -114,15 +114,73 @@ const isGit = (s: string) => GIT.test(s)
 const SLOT = '\u0000out\u0000'
 const quoteArg = (s: string) => (/^[\w@%+=:,./~-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`)
 
-function join(base: string, dir: string): string {
-  if (dir.startsWith('/')) return dir
-  const parts = base.replace(/\/+$/, '').split('/')
-  for (const p of dir.split('/')) {
+/** `dir` resolved against `base`, `.` and `..` folded lexically (symlinks are not followed). */
+export function resolvePath(base: string, dir: string): string {
+  const parts: string[] = []
+  for (const p of `${dir.startsWith('/') ? '' : `${base}/`}${dir}`.split('/')) {
     if (p === '' || p === '.') continue
     if (p === '..') parts.pop()
     else parts.push(p)
   }
-  return parts.join('/') || '/'
+  return `/${parts.join('/')}`
+}
+
+/** Whether `path` is the worktree or under it, both resolved lexically. */
+export function isInside(path: string, worktree: string): boolean {
+  if (!path.startsWith('/') || !worktree.startsWith('/')) return false
+  const wt = resolvePath('/', worktree)
+  const p = resolvePath('/', path)
+  return wt !== '/' && (p === wt || p.startsWith(`${wt}/`))
+}
+
+/**
+ * Refusals about where git runs: changing directory, the shared checkout,
+ * another worktree, GIT_* variables or git's own location options. The mod
+ * offers no rewrite for these, only Claude Code's own remedy.
+ */
+export const isLocationRefusal = (refusal: Refusal) =>
+  refusal.pattern === 'chdir' ||
+  refusal.pattern === 'git-env' ||
+  refusal.pattern === 'cwd-outside' ||
+  /shared checkout|different worktree|GIT_[A-Z]|--git-dir|--work-tree|core\.worktree|changes directory|-C /i.test(refusal.reason)
+
+/** git's own options that move where it reads or writes, or inject configuration: never in a rewrite. */
+const LOCATION_OPTION = /(?:^|\s)(?:--git-dir|--work-tree|--namespace|--config-env|--exec-path|--bare|--super-prefix)(?:[=\s]|$)/
+/** Global options (before the subcommand) a rewrite may keep as they are. */
+const SAFE_GLOBAL = /^(?:--no-pager|-p|--paginate|-P|--no-replace-objects|--literal-pathspecs|--glob-pathspecs|--noglob-pathspecs|--icase-pathspecs|--no-optional-locks|--no-advice)(?=\s|$)/
+const ARG = /^("([^"$`\\]*)"|'([^']*)'|([^\s"'$`\\~]+))/
+
+/**
+ * A git segment rewritten to `git -C <dir> …`, folding its own `-C`s into the
+ * directory. Undefined when the segment sets anything git could use to leave
+ * the worktree, or its directory is not inside the worktree.
+ */
+function gitStep(text: string, base: string, worktree: string): string | undefined {
+  if (!text.startsWith('git') || LOCATION_OPTION.test(text)) return undefined
+  let rest = text.slice(3).trimStart()
+  let dir = base
+  const kept: string[] = []
+  for (;;) {
+    const c = /^-C\s+/.exec(rest)
+    if (c !== null) {
+      const arg = ARG.exec(rest.slice(c[0].length))
+      if (arg === null) return undefined
+      dir = resolvePath(dir, arg[2] ?? arg[3] ?? arg[4]!)
+      if (!isInside(dir, worktree)) return undefined
+      rest = rest.slice(c[0].length + arg[0].length).trimStart()
+      continue
+    }
+    const safe = SAFE_GLOBAL.exec(rest)
+    if (safe !== null) {
+      kept.push(safe[0])
+      rest = rest.slice(safe[0].length).trimStart()
+      continue
+    }
+    if (rest.startsWith('-')) return undefined // -c, --config-env=, and any global option not known to be harmless
+    break
+  }
+  if (!isInside(dir, worktree)) return undefined
+  return ['git', '-C', quoteArg(dir), ...kept, ...(rest === '' ? [] : [rest])].join(' ')
 }
 
 /** What in the command most likely tripped the check, from its structure, worst first. */
@@ -173,25 +231,30 @@ export function rewrite(command: string, worktree: string): string[] | undefined
   }
   if (/\$\(|`|<<|\|\s*(?:xargs\s+(?:-\S+\s+)*)?git\b/.test(command)) return undefined
   if (/^\s*(?:for|while|until|if|case)\b|^\s*[({]/.test(command)) return undefined
+  // Anything that sets or names a GIT_* variable, or git's location options, is the guard's to judge.
+  if (/GIT_[A-Za-z_]/.test(command) || LOCATION_OPTION.test(command)) return undefined
+  if (!isInside(worktree, worktree)) return undefined
   const segs = segments(command)
   const out: string[] = []
-  let dir: string | undefined
+  let dir = resolvePath('/', worktree)
   for (const s of segs) {
     const cd = CD.exec(s.text)
     if (cd !== null) {
       const to = cd[1] ?? cd[2] ?? cd[3]
-      if (to === undefined || to === '~' || to.startsWith('~/') || to === '-' || to.includes('$')) return undefined
-      dir = join(dir ?? worktree, to)
+      if (to === undefined || to.startsWith('~') || to === '-' || /[$`\\]/.test(to)) return undefined
+      dir = resolvePath(dir, to)
+      if (!isInside(dir, worktree)) return undefined
       continue
     }
     if (isGit(s.text)) {
-      if (/^[A-Za-z_]/.test(s.text) && !s.text.startsWith('git')) return undefined // VAR=… git: no mechanical rewrite
-      const rest = s.text.slice(3).trimStart()
-      out.push(/^-C\s/.test(rest) ? s.text : `git -C ${quoteArg(dir ?? worktree)}${rest === '' ? '' : ` ${rest}`}`)
+      const step = gitStep(s.text, dir, worktree) // VAR=… git: undefined, as it does not start with git
+      if (step === undefined) return undefined
+      out.push(step)
     } else {
       if (/\bgit\b/.test(s.text) && WRAPPER.test(s.text)) return undefined
-      // A command that does not name git is not what the check refuses: it may keep its `cd`.
-      out.push(dir === undefined ? s.text : `cd ${quoteArg(dir)} && ${s.text}`)
+      if (/^(?:export|declare|typeset|readonly|unset|env)\b|^[A-Za-z_][A-Za-z0-9_]*=/.test(s.text)) return undefined // the environment git would inherit
+      // A command that does not name git is not what the check refuses: it may keep its `cd`, into the worktree.
+      out.push(dir === resolvePath('/', worktree) ? s.text : `cd ${quoteArg(dir)} && ${s.text}`)
     }
   }
   if (out.length === 0 || (out.length === 1 && squash(out[0]!) === squash(command))) return undefined
@@ -214,16 +277,23 @@ const RULES = (wt: string) =>
 
 const steps = (cmds: string[]) => cmds.map((c, i) => `  ${i + 1}. ${clip(c, QUOTE_CHARS * 2)}`).join('\n')
 
+/**
+ * For a refusal about where git runs: Claude Code's own remedy, and no
+ * rewrite, so the note never points git anywhere the guard has not.
+ */
+function locationNote(refusal: Refusal): string {
+  return `worktree-coach: ${HINT[refusal.pattern]} This refusal is about where git runs. Run git in your own worktree, ${refusal.worktree}, and nowhere else: do not change the directory, GIT_* variables or git's location options to get around the check.`
+}
+
 /** The full note: why, what to change and, when it can be written out, the rewrite. */
 export function noteFor(refusal: Refusal, command: string): string {
   const wt = refusal.worktree
+  if (isLocationRefusal(refusal)) return locationNote(refusal)
   const lines = [`worktree-coach: ${HINT[refusal.pattern]}`]
   const found = triggers(command)
   if (found.length > 0) lines.push(`Likely trigger: ${found.slice(0, 3).join('; ')}.`)
-  const cmds = refusal.pattern === 'cwd-outside' ? undefined : rewrite(command, wt)
+  const cmds = rewrite(command, wt)
   if (cmds !== undefined) lines.push(`Rewrite: run these as separate Bash calls, in order, checking each result${cmds.some(c => c.includes('<output of step')) ? ' and pasting each <output of step N> in literally' : ''}:\n${steps(cmds)}`)
-  else if (refusal.pattern === 'cwd-outside')
-    lines.push(`Rewrite: name the worktree explicitly, e.g. \`git -C ${quoteArg(wt)} …\` and absolute paths under ${wt}; if plain commands keep being refused, run \`cd ${quoteArg(wt)}\` alone first.`)
   else lines.push('Rewrite: split it by hand into plain, separate commands, following the rules below.')
   lines.push(RULES(wt))
   return lines.join('\n')
@@ -231,7 +301,8 @@ export function noteFor(refusal: Refusal, command: string): string {
 
 /** The short reminder for a pattern Claude has already had the note for. */
 export function reminderFor(refusal: Refusal, command: string, count: number): string {
-  const cmds = refusal.pattern === 'cwd-outside' ? undefined : rewrite(command, refusal.worktree)
+  if (isLocationRefusal(refusal)) return `worktree-coach: refused again (${count}× this pattern). Run git in your own worktree, ${refusal.worktree}.`
+  const cmds = rewrite(command, refusal.worktree)
   const how = cmds !== undefined ? ` Run instead, one per call: ${cmds.map(c => `\`${clip(c, QUOTE_CHARS)}\``).join(', then ')}.` : ` One plain git command per call, \`git -C ${quoteArg(refusal.worktree)}\`, no \`cd &&\`, \`$(…)\`, pipes or chains.`
   return `worktree-coach: refused again (${count}× this pattern).${how}`
 }
